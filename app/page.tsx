@@ -1,68 +1,114 @@
-import Image from "next/image";
+import React from "react";
+import Link from "next/link";
 
-export default function Home() {
+// 반응형 카드 컴포넌트
+function ItemCard({
+  aspect = "aspect-square",
+  title = "랜덤 비빔밥의 날",
+  author = "작성자",
+}: {
+  aspect?: string;
+  title?: string;
+  author?: string;
+}) {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="flex flex-col gap-2 cursor-pointer group">
+      {/* 썸네일 이미지 박스 */}
+      <div
+        className={`w-full ${aspect} bg-neutral-200 rounded-xl overflow-hidden shadow-sm flex items-center justify-center text-neutral-400 group-hover:opacity-90 transition`}
+      >
+        <span className="text-xs">Image</span>
+      </div>
+
+      {/* 작성자 정보 */}
+      <div className="flex items-center gap-1.5 px-0.5">
+        <div className="w-5 h-5 rounded-full bg-neutral-300 shrink-0" />
+        <span className="text-xs font-medium text-neutral-800 truncate">
+          {author}
+        </span>
+      </div>
+
+      {/* 게시글 제목 */}
+      <p className="text-sm font-semibold text-neutral-900 leading-snug px-0.5 truncate">
+        {title}
+      </p>
+    </div>
+  );
+}
+
+// 섹션 컴포넌트 (모바일 1열 -> 태블릿 3열 -> PC 5열)
+function Section({
+  badgeText,
+  description,
+  aspect = "aspect-square",
+}: {
+  badgeText: string;
+  description: string;
+  aspect?: string;
+}) {
+  return (
+    <section className="flex flex-col gap-4">
+      {/* 섹션 헤더 */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="bg-[#9BB8F9] text-white text-sm md:text-lg font-black px-3.5 py-1 rounded-md tracking-tight shadow-sm">
+            {badgeText}
+          </div>
+          <span className="text-neutral-600 text-xs md:text-sm font-medium hidden sm:inline">
+            {description}
+          </span>
+        </div>
+        <button className="bg-[#3D7BF6] hover:bg-blue-600 text-white text-xs md:text-sm font-bold px-3.5 md:px-4 py-1.5 rounded-xl transition shrink-0 shadow-sm">
+          더보기
+        </button>
+      </div>
+
+      {/* 모바일 1열 -> 태블릿 3열 -> PC 5열 그리드 */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4">
+        {[1, 2, 3, 4, 5].map((item) => (
+          <ItemCard key={item} aspect={aspect} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default function MainPage() {
+  return (
+    <div className="min-h-screen bg-[#D8EBFC] flex flex-col font-sans">
+
+      {/* 2. 메인 컨텐츠 영역 */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col gap-10">
+        {/* 메인 히어로 모션 그래픽 자리 (반응형 집 모양) */}
+        <div className="w-full flex justify-center py-2">
+          <div className="w-full max-w-3xl aspect-4/3 bg-[#F7F3EC] shadow-inner flex items-center justify-center [clip-path:polygon(50%_0%,100%_25%,100%_100%,0%_100%,0%_25%)]">
+            <span className="text-neutral-400 font-medium text-sm">
+              🏡 메인 모션 그래픽 영역
+            </span>
+          </div>
+        </div>
+
+        {/* 3. 에디터 PICK 코너들 */}
+        {/* 에디터 PICK 파티 (포스터 1:1.414 비율) */}
+        <Section
+          badgeText="에디터 PICK 파티"
+          description="매주 월요일 오전 에디터가 엄선해서 고른 추천 파티가 업데이트 됩니다."
+          aspect="aspect-[1/1.414]"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {/* 에디터 PICK 컨텐츠 (1:1 정사각형 비율) */}
+        <Section
+          badgeText="에디터 PICK 컨텐츠"
+          description="매주 월요일 오전 에디터가 엄선해서 고른 추천 컨텐츠가 업데이트 됩니다."
+          aspect="aspect-square"
+        />
+
+        {/* 에디터 PICK 초대장 (1:1 정사각형 비율) */}
+        <Section
+          badgeText="에디터 PICK 초대장"
+          description="매주 월요일 오전 에디터가 엄선해서 고른 추천 초대장이 업데이트 됩니다."
+          aspect="aspect-square"
+        />
       </main>
     </div>
   );
