@@ -10,6 +10,8 @@ interface Props {
   onClose: () => void;
   onToggleBookmark: (party: VillagePartyItem) => void;
   onAddComment: (partyId: string | number, text: string) => void;
+  isMe?: boolean;
+  onEdit?: (party: VillagePartyItem) => void;
 }
 
 export default function PartyDetailCard({
@@ -18,6 +20,8 @@ export default function PartyDetailCard({
   onClose,
   onToggleBookmark,
   onAddComment,
+  isMe = false,
+  onEdit,
 }: Props) {
   const router = useRouter();
   const [commentText, setCommentText] = useState("");
@@ -33,35 +37,40 @@ export default function PartyDetailCard({
     // 가로 너비를 max-w-3xl(약 768px)로 단정하게 고정하고 중앙 배치
     <div className="bg-white rounded-3xl p-5 md:p-6 shadow-xl border border-black/5 flex flex-col gap-4 w-full max-w-3xl mx-auto animate-in fade-in zoom-in-95 duration-150">
       
-      {/* 1. 상단 바 (뒤로가기 & 저장) */}
+      {/* 1. 상단 바 (뒤로가기 & 내 글일 때만 [수정] 버튼) */}
       <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
         <button
           type="button"
           onClick={onClose}
-          className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-sm font-black transition"
+          className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-sm font-black transition cursor-pointer"
           title="목록으로 돌아가기"
         >
           ←
         </button>
 
-        <button
-          type="button"
-          onClick={() => onToggleBookmark(party)}
-          className={`text-xs font-black px-4 py-1.5 rounded-xl transition shadow-sm ${
-            isBookmarked
-              ? "bg-neutral-900 text-white"
-              : "bg-[#3D7BF6] hover:bg-blue-600 text-white"
-          }`}
-        >
-          {isBookmarked ? "저장됨 ✓" : "저장"}
-        </button>
+        {/* 내 집(내 글)일 때만 우측 상단에 [ 수정 ] 버튼 노출 */}
+        {isMe && (
+          <button
+            type="button"
+            onClick={() => {
+              if (onEdit) {
+                onEdit(party);
+              } else {
+                router.push(`/house/${party.userId}/party/new?edit=${party.id}`);
+              }
+            }}
+            className="text-xs font-black px-4 py-1.5 rounded-sm bg-neutral-900 hover:bg-neutral-800 text-white transition shadow-sm cursor-pointer"
+          >
+            수정
+          </button>
+        )}
       </div>
 
       {/* 2. 본문 2단 구성: 포스터 고정 너비 + 우측 정보창 */}
       <div className="flex flex-col sm:flex-row gap-6 items-start">
         
         {/* 좌측: 포스터 (1:1.414 고정, 줄어들지 않는 shrink-0) */}
-        <div className="w-full sm:w-[290px] md:w-[320px] aspect-[1/1.414] shrink-0 rounded-2xl overflow-hidden shadow-sm bg-neutral-100 border border-neutral-200/80">
+        <div className="w-full sm:w-[290px] md:w-[320px] aspect-[1/1.414] shrink-0 rounded-2xl overflow-hidden shadow-sm bg-neutral-100 border border-neutral-200/80 relative group">
           {party.posterImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -75,6 +84,32 @@ export default function PartyDetailCard({
               <span className="text-xs font-black text-neutral-700">{party.title}</span>
               <span className="text-[10px] text-neutral-400 mt-1">{party.eventDate}</span>
             </div>
+          )}
+
+          {/* 남의 집일 때: 포스터 카드 안쪽 우측 위에 북마크 버튼 노출 */}
+          {!isMe && (
+            <button
+              type="button"
+              onClick={() => onToggleBookmark(party)}
+              className={`absolute top-3 right-3 p-2 rounded-lg backdrop-blur-md transition shadow-sm cursor-pointer ${
+                isBookmarked
+                  ? "bg-white text-[#6B5A55] scale-105"
+                  : "bg-white/85 hover:bg-white text-[#6B5A55]/70 hover:text-[#6B5A55]"
+              }`}
+              title={isBookmarked ? "저장 해제" : "저장"}
+            >
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill={isBookmarked ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
           )}
         </div>
 

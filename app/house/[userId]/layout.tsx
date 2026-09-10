@@ -1,61 +1,71 @@
 "use client";
 
-import React, { use } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import HouseBanner from "@/app/components/HouseBanner";
+import React, { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import HouseHeader from "@/app/components/house/HouseHeader";
+import { MOCK_USERS } from "@/app/data/mockUsers";
 
 export default function HouseLayout({
   children,
-  params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ userId: string }>;
 }) {
-  const { userId } = use(params);
-  const pathname = usePathname();
+  const params = useParams();
+  const userId = (params?.userId as string) || "dang";
+  const [currentUserId, setCurrentUserId] = useState<string>("dang");
 
-  const tabs = [
-    { name: "파티", path: `/house/${userId}/party` },
-    { name: "콘텐츠", path: `/house/${userId}/contents` },
-    { name: "갤러리", path: `/house/${userId}/gallery` },
-    { name: "우체통", path: `/house/${userId}/postbox` },
-  ];
+  // 현재 방문한 집의 유저 데이터
+  const targetUser = MOCK_USERS.find((u) => u.id === userId);
+  const defaultName = targetUser ? targetUser.houseName : `${userId}의 집`;
+  const [customHouseName, setCustomHouseName] = useState<string>(defaultName);
+
+  useEffect(() => {
+    const syncData = () => {
+      try {
+        const savedId = localStorage.getItem("current_user_id");
+        if (savedId) setCurrentUserId(savedId);
+
+        // 내 집 커스텀 이름 동기화
+        const savedName = localStorage.getItem(`house_name_${userId}`);
+        if (savedName) {
+          if (userId === "dang" && (savedName.includes("콩콩") || savedName.includes("민트") || savedName.includes("오렌지"))) {
+            setCustomHouseName(targetUser?.houseName || "당당이네 집");
+            localStorage.setItem("house_name_dang", targetUser?.houseName || "당당이네 집");
+          } else {
+            setCustomHouseName(savedName);
+          }
+        } else if (targetUser) {
+          setCustomHouseName(targetUser.houseName);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    syncData();
+    window.addEventListener("storage", syncData);
+    window.addEventListener("user_profile_updated", syncData);
+    window.addEventListener("auth_state_changed", syncData);
+    return () => {
+      window.removeEventListener("storage", syncData);
+      window.removeEventListener("user_profile_updated", syncData);
+      window.removeEventListener("auth_state_changed", syncData);
+    };
+  }, [userId, targetUser]);
 
   return (
-    <div className="min-h-screen bg-[#D4E8FE] p-4 md:p-8 flex justify-center">
-      <div className="w-full max-w-7xl flex flex-col md:flex-row gap-6 md:gap-8 items-start">
-        
-        {/* 좌측 사이드바 */}
-        <aside className="w-full md:w-56 shrink-0 flex flex-col gap-6">
-          <HouseBanner userId={userId} />
+    <div className="w-full min-h-screen bg-[#FFFDF8] flex flex-col font-sans">
+      {/* ⭐️ 모든 집 서브 카테고리(파티, 콘텐츠, 갤러리, 우체통 등) 공통 상단 헤더 */}
+      <HouseHeader
+        userId={userId}
+        myUserId={currentUserId}
+        houseName={customHouseName}
+        followingCount={targetUser?.subscribedCount ?? 3}
+        guestCount={targetUser?.guestCount ?? 3}
+      />
 
-          {/* 탭 메뉴 */}
-          <nav className="grid grid-cols-2 md:flex md:flex-col gap-2 w-full">
-            {tabs.map((tab) => {
-              const isActive = pathname.startsWith(tab.path);
-              return (
-                <Link
-                  key={tab.name}
-                  href={tab.path}
-                  className={`text-base md:text-lg font-black tracking-normal transition-all duration-100 py-1.5 px-3 block w-fit ${
-                    isActive
-                      ? "bg-[#8CB2F8] text-[#FFFBEB]"
-                      : "text-[#543D32] hover:text-[#2D1F17]"
-                  }`}
-                >
-                  {tab.name}
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
-
-        {/* 메인 영역 */}
-        <main className="flex-1 w-full min-w-0">
-          {children}
-        </main>
-
+      {/* 서브 카테고리별 본문 영역 */}
+      <div className="flex-1 w-full min-w-0">
+        {children}
       </div>
     </div>
   );

@@ -1,11 +1,9 @@
-// app/layout.tsx
-import type { Metadata } from "next";
 import "./globals.css";
-import Header from "./components/Header";
+import AppShell from "@/app/components/common/AppShell";
 
-export const metadata: Metadata = {
-  title: "Knock Knock",
-  description: "집들이 모임 커뮤니티 플랫폼",
+export const metadata = {
+  title: "KK",
+  description: "가장 편안한 공간으로의 다정한 초대",
 };
 
 export default function RootLayout({
@@ -15,10 +13,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="antialiased">
-        {/* 공통 헤더가 모든 페이지 상단에 자동으로 뜹니다 */}
-        <Header />
-        {children}
+      <head>
+        <link
+          rel="stylesheet"
+          as="style"
+          crossOrigin="anonymous"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Myeongjo:wght@400;700;800&display=swap"
+        />
+      </head>
+      <body className="font-['Pretendard',sans-serif] antialiased text-neutral-900 bg-[#E8E6DF] m-0 p-0 overflow-hidden">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

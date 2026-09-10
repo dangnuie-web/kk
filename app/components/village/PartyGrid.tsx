@@ -17,7 +17,7 @@ export default function PartyGrid({
   onToggleBookmark,
 }: Props) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 min-[1750px]:grid-cols-7 min-[2000px]:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
       {parties.map((item) => {
         const isBookmarked = bookmarkedIds.includes(item.id);
 
@@ -28,7 +28,7 @@ export default function PartyGrid({
             className="flex flex-col gap-2 cursor-pointer group"
           >
             {/* 포스터 썸네일 */}
-            <div className="w-full aspect-[1/1.414] bg-neutral-200 rounded-2xl overflow-hidden shadow-sm border border-black/5 group-hover:scale-[1.02] transition duration-200 relative">
+            <div className="w-full aspect-[1/1.414] bg-neutral-200 rounded-[6px] overflow-hidden shadow-sm border border-black/5 group-hover:scale-[1.02] transition duration-200 relative">
               {item.posterImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -59,7 +59,7 @@ export default function PartyGrid({
                   viewBox="0 0 24 24"
                   fill={isBookmarked ? "currentColor" : "none"}
                   stroke="currentColor"
-                  strokeWidth="2.2"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
@@ -71,9 +71,11 @@ export default function PartyGrid({
             {/* 호스트 문패 */}
             <div className="flex items-center gap-1.5 px-0.5">
               <div className="w-5 h-5 rounded-full bg-neutral-300 flex items-center justify-center text-[10px] font-black shrink-0">
-                {item.userName[0]}
+                {item.userName?.[0] || "당"}
               </div>
-              <span className="text-xs font-bold text-neutral-600 truncate">{item.userName}</span>
+              <span className="text-xs font-bold text-neutral-600 truncate">
+                {item.userName || "익명"}
+              </span>
             </div>
 
             {/* 제목 */}

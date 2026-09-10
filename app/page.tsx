@@ -1,115 +1,56 @@
+"use client";
+
 import React from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-// 반응형 카드 컴포넌트
-function ItemCard({
-  aspect = "aspect-square",
-  title = "랜덤 비빔밥의 날",
-  author = "작성자",
-}: {
-  aspect?: string;
-  title?: string;
-  author?: string;
-}) {
+export default function HomePage() {
+  const router = useRouter();
+
   return (
-    <div className="flex flex-col gap-2 cursor-pointer group">
-      {/* 썸네일 이미지 박스 */}
-      <div
-        className={`w-full ${aspect} bg-neutral-200 rounded-xl overflow-hidden shadow-sm flex items-center justify-center text-neutral-400 group-hover:opacity-90 transition`}
-      >
-        <span className="text-xs">Image</span>
-      </div>
-
-      {/* 작성자 정보 */}
-      <div className="flex items-center gap-1.5 px-0.5">
-        <div className="w-5 h-5 rounded-full bg-neutral-300 shrink-0" />
-        <span className="text-xs font-medium text-neutral-800 truncate">
-          {author}
+    <div className="min-h-screen bg-[#9BB8F9] flex flex-col items-center justify-center p-6 md:p-12 font-sans select-none">
+      
+      {/* 1. 상단 소개 텍스트 슬롯 */}
+      <div className="flex flex-col items-center text-center gap-2 mb-8 animate-in fade-in slide-in-from-bottom-3 duration-300">
+        <span className="text-xs md:text-sm font-medium tracking-wide text-neutral-800 italic">
+          Small Brands Fair Seoul 2026
         </span>
+        <h1 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900">
+          BRANDERS
+          <br />
+          HOLIDAY
+        </h1>
+        <p className="text-xs md:text-sm font-bold text-neutral-800 mt-1">
+          마켓에 참여할 작은 브랜드를 소개합니다
+        </p>
       </div>
 
-      {/* 게시글 제목 */}
-      <p className="text-sm font-semibold text-neutral-900 leading-snug px-0.5 truncate">
-        {title}
-      </p>
-    </div>
-  );
-}
+      {/* 2. 중앙 집 모양 그래픽 / 배너 슬롯 */}
+      <div className="relative w-full max-w-lg aspect-[4/3] bg-[#F4EFE6] rounded-t-[40px] rounded-b-3xl shadow-2xl border-4 border-white/60 p-8 flex flex-col items-center justify-center gap-6 animate-in zoom-in-95 duration-300">
+        
+        {/* 지붕 느낌을 주는 삼각/경사 형태 상단 쉐입 */}
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[36px] border-l-transparent border-r-[36px] border-r-transparent border-b-[24px] border-b-[#F4EFE6]" />
 
-// 섹션 컴포넌트 (모바일 1열 -> 태블릿 3열 -> PC 5열)
-function Section({
-  badgeText,
-  description,
-  aspect = "aspect-square",
-}: {
-  badgeText: string;
-  description: string;
-  aspect?: string;
-}) {
-  return (
-    <section className="flex flex-col gap-4">
-      {/* 섹션 헤더 */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          <div className="bg-[#9BB8F9] text-white text-sm md:text-lg font-black px-3.5 py-1 rounded-md tracking-tight shadow-sm">
-            {badgeText}
+        {/* 브랜드 / 컨텐츠 로고 나열 예시 */}
+        <div className="flex flex-col items-center gap-4 w-full text-neutral-900 font-black">
+          <span className="text-3xl md:text-4xl tracking-tighter">anu</span>
+          <span className="text-xl md:text-2xl tracking-tight">SLEEPYGOM</span>
+          <span className="text-lg md:text-xl">Factory Normal</span>
+          <div className="flex items-center gap-6 mt-1 text-sm md:text-base font-serif italic text-neutral-700">
+            <span>Manifold</span>
+            <span className="font-sans font-black not-italic text-neutral-900">TélioT</span>
           </div>
-          <span className="text-neutral-600 text-xs md:text-sm font-medium hidden sm:inline">
-            {description}
-          </span>
         </div>
-        <button className="bg-[#3D7BF6] hover:bg-blue-600 text-white text-xs md:text-sm font-bold px-3.5 md:px-4 py-1.5 rounded-xl transition shrink-0 shadow-sm">
-          더보기
+
+        {/* 하단 바로가기 액션 버튼 */}
+        <button
+          type="button"
+          onClick={() => router.push("/village")}
+          className="mt-2 text-xs font-black px-5 py-2.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white transition shadow-md"
+        >
+          마을 둘러보기 →
         </button>
       </div>
 
-      {/* 모바일 1열 -> 태블릿 3열 -> PC 5열 그리드 */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4">
-        {[1, 2, 3, 4, 5].map((item) => (
-          <ItemCard key={item} aspect={aspect} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export default function MainPage() {
-  return (
-    <div className="min-h-screen bg-[#D8EBFC] flex flex-col font-sans">
-
-      {/* 2. 메인 컨텐츠 영역 */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col gap-10">
-        {/* 메인 히어로 모션 그래픽 자리 (반응형 집 모양) */}
-        <div className="w-full flex justify-center py-2">
-          <div className="w-full max-w-3xl aspect-4/3 bg-[#F7F3EC] shadow-inner flex items-center justify-center [clip-path:polygon(50%_0%,100%_25%,100%_100%,0%_100%,0%_25%)]">
-            <span className="text-neutral-400 font-medium text-sm">
-              🏡 메인 모션 그래픽 영역
-            </span>
-          </div>
-        </div>
-
-        {/* 3. 에디터 PICK 코너들 */}
-        {/* 에디터 PICK 파티 (포스터 1:1.414 비율) */}
-        <Section
-          badgeText="에디터 PICK 파티"
-          description="매주 월요일 오전 에디터가 엄선해서 고른 추천 파티가 업데이트 됩니다."
-          aspect="aspect-[1/1.414]"
-        />
-
-        {/* 에디터 PICK 컨텐츠 (1:1 정사각형 비율) */}
-        <Section
-          badgeText="에디터 PICK 컨텐츠"
-          description="매주 월요일 오전 에디터가 엄선해서 고른 추천 컨텐츠가 업데이트 됩니다."
-          aspect="aspect-square"
-        />
-
-        {/* 에디터 PICK 초대장 (1:1 정사각형 비율) */}
-        <Section
-          badgeText="에디터 PICK 초대장"
-          description="매주 월요일 오전 에디터가 엄선해서 고른 추천 초대장이 업데이트 됩니다."
-          aspect="aspect-square"
-        />
-      </main>
     </div>
   );
 }

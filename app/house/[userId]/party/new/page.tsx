@@ -49,8 +49,9 @@ export default function NewPartyPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [posterImage, setPosterImage] = useState<string | null>(null);
+  const [activeDraftSlotId, setActiveDraftSlotId] = useState<number | null>(null);
 
-  // ⭐️ 2. 에디터 모달 열림/닫힘 상태 추가
+  // 에디터 모달 열림/닫힘 상태
   const [showEditorModal, setShowEditorModal] = useState(false);
 
   // 임시저장 데이터 로드
@@ -66,21 +67,55 @@ export default function NewPartyPage() {
 
   const [showDraftModal, setShowDraftModal] = useState(false);
 
-  // 임시저장 핸들러
+  // 임시저장 핸들러 (덮어쓰기 지원 및 3개 초과 검사)
   const handleSaveDraft = () => {
     if (!title.trim() && !content.trim() && !posterImage) {
       alert("저장할 내용이 없습니다.");
       return;
     }
+
+    const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    // 1. 이미 열려있거나 저장된 활성 슬롯이 존재하는 경우 -> 해당 슬롯 최신 버전으로 덮어쓰기!
+    if (activeDraftSlotId !== null && drafts.some((d) => d.slotId === activeDraftSlotId)) {
+      const updated = drafts.map((d) =>
+        d.slotId === activeDraftSlotId
+          ? {
+              ...d,
+              title: title || "제목 없음",
+              content,
+              eventDate: getFormattedToday(),
+              posterImage: posterImage || undefined,
+              savedAt: nowTime,
+            }
+          : d
+      );
+      setDrafts(updated);
+      localStorage.setItem(`drafts_${userId}`, JSON.stringify(updated));
+      alert(`임시저장이 최신 버전으로 갱신되었습니다.`);
+      return;
+    }
+
+    // 2. 새 슬롯으로 저장하려는 경우: 3개 초과 체크!
     if (drafts.length >= 3) {
-      alert("임시저장은 최대 3개까지만 가능합니다.");
+      alert("저장 목록이 꽉 찼습니다.");
       setShowDraftModal(true);
       return;
     }
 
+    // 빈 슬롯 번호 찾기 (1, 2, 3 중 비어있는 가장 작은 번호)
+    const existingSlotIds = drafts.map((d) => d.slotId);
+    let newSlotId: 1 | 2 | 3 = 1;
+    for (let i = 1; i <= 3; i++) {
+      if (!existingSlotIds.includes(i as 1 | 2 | 3)) {
+        newSlotId = i as 1 | 2 | 3;
+        break;
+      }
+    }
+
     const newDraft: DraftSlot = {
-      slotId: (drafts.length + 1) as 1 | 2 | 3,
-      savedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      slotId: newSlotId,
+      savedAt: nowTime,
       title: title || "제목 없음",
       content,
       eventDate: getFormattedToday(),
@@ -89,18 +124,29 @@ export default function NewPartyPage() {
 
     const updated = [...drafts, newDraft];
     setDrafts(updated);
+    setActiveDraftSlotId(newSlotId);
     localStorage.setItem(`drafts_${userId}`, JSON.stringify(updated));
-    alert(`임시저장 완료 (${newDraft.slotId}/3)`);
+    alert(`임시저장 완료 (${updated.length}/3)`);
   };
 
   const handleLoadDraft = (draft: DraftSlot) => {
     setTitle(draft.title === "제목 없음" ? "" : draft.title);
     setContent(draft.content || "");
     setPosterImage(draft.posterImage || null);
+    setActiveDraftSlotId(draft.slotId);
     setShowDraftModal(false);
   };
 
-  // 파티 등록 완료
+  const handleDeleteDraft = (slotId: number) => {
+    const updated = drafts.filter((d) => d.slotId !== slotId);
+    setDrafts(updated);
+    localStorage.setItem(`drafts_${userId}`, JSON.stringify(updated));
+    if (activeDraftSlotId === slotId) {
+      setActiveDraftSlotId(null);
+    }
+  };
+
+  // 파티 등록(발행) 완료
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -125,78 +171,110 @@ export default function NewPartyPage() {
       localStorage.setItem(storageKey, JSON.stringify([newPost, ...currentPosts]));
       localStorage.setItem("party_posts_dang", JSON.stringify([newPost, ...currentPosts]));
 
+      // 등록 성공 시 임시저장에서 현재 슬롯 삭제(선택사항)
+      if (activeDraftSlotId !== null) {
+        handleDeleteDraft(activeDraftSlotId);
+      }
+
       alert("파티가 성공적으로 등록되었습니다!");
       router.push(`/house/${userId}/party`);
     } catch (err) {
-      alert("저장 중 오류가 발생했습니다.");
+      alert("등록 중 오류가 발생했습니다.");
       console.error(err);
     }
   };
 
   return (
-    <div className="bg-white/90 backdrop-blur-md rounded-3xl p-6 md:p-10 shadow-sm border border-white/40 max-w-5xl mx-auto w-full">
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-        {/* ⭐️ 3. onOpenEditor에 alert 대신 setShowEditorModal(true) 연결 */}
-        <PosterUploader
-          posterImage={posterImage}
-          onImageChange={setPosterImage}
-          onCustomUpload={async (file) => {
-            const compressed = await compressImage(file);
-            setPosterImage(compressed);
-          }}
-          onOpenEditor={() => setShowEditorModal(true)}
-        />
-
-        <div className="flex flex-col justify-between h-full min-h-[420px] gap-6">
-          <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between text-xs text-neutral-400 font-bold">
-              <span>작성일자</span>
-              <span>{getFormattedToday()}</span>
-            </div>
-
+    <div className="w-full px-6 md:px-12 py-6 pb-20 md:pb-28 flex flex-col gap-6 font-sans">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full">
+        {/* 상단 바: 작성일자 & 제목 / 우측 임시저장(저장 + 아래 1/3) & 등록 버튼 */}
+        <div className="flex items-end justify-between gap-4 border-b border-neutral-200/60 pb-4">
+          <div className="flex flex-col gap-1.5 flex-1">
+            <span className="text-xs text-neutral-500 font-normal">
+              작성일자 : {getFormattedToday()}
+            </span>
             <input
               type="text"
-              placeholder="파티 제목을 입력하세요"
+              placeholder="제목"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-2xl font-black text-neutral-900 placeholder:text-neutral-300 outline-none border-b border-neutral-200 pb-2"
-            />
-
-            <textarea
-              placeholder="본문 내용을 입력하세요"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={6}
-              className="w-full bg-neutral-50/50 border border-neutral-200/80 rounded-2xl p-4 text-sm text-neutral-800 placeholder:text-neutral-300 outline-none resize-none"
+              className="w-full text-3xl font-light text-neutral-900 placeholder:text-neutral-400 outline-none bg-transparent"
             />
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
-            <div className="flex items-center gap-2">
+          <div className="flex items-start gap-3 shrink-0">
+            {/* 임시저장 컨트롤 (저장 버튼 + 그 아래 '임시저장 1/3') */}
+            <div className="flex flex-col items-center gap-1.5">
               <button
                 type="button"
                 onClick={handleSaveDraft}
-                className="border border-neutral-300 hover:bg-neutral-100 text-neutral-700 text-xs font-bold px-4 py-2.5 rounded-xl transition"
+                className="h-9 px-4 rounded-xl border border-neutral-300 hover:border-neutral-500 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-bold transition shadow-2xs cursor-pointer flex items-center justify-center whitespace-nowrap"
               >
-                저장 ({drafts.length}/3)
+                저장
               </button>
-              {drafts.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowDraftModal(true)}
-                  className="text-blue-600 hover:underline text-xs font-bold px-1"
-                >
-                  불러오기
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowDraftModal(true)}
+                className="text-[11px] text-neutral-500 hover:text-neutral-900 font-medium cursor-pointer transition underline-offset-2 hover:underline whitespace-nowrap"
+                title="임시저장 목록 보기"
+              >
+                임시저장 {drafts.length}/3
+              </button>
             </div>
 
+            {/* 글 등록(발행) 버튼 */}
             <button
               type="submit"
-              className="bg-black hover:bg-neutral-800 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition shadow-md"
+              className="h-9 bg-neutral-900 hover:bg-black text-white text-xs font-bold px-5 rounded-xl transition shadow-sm cursor-pointer whitespace-nowrap flex items-center justify-center"
             >
-              등록하기
+              등록
             </button>
+          </div>
+        </div>
+
+        {/* 2. 에디터 서식 툴바 (콘텐츠 등록처럼 제목 바로 아래에 가로 전체 배치, 자동 줄바꿈) */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-neutral-200/60 pb-3 text-xs text-neutral-700 select-none">
+          <button type="button" className="flex items-center gap-1 hover:text-black font-medium">
+            <span>나눔고딕</span>
+            <span className="text-[10px] text-neutral-400">⌵</span>
+          </button>
+          <button type="button" className="flex items-center gap-1 hover:text-black font-medium">
+            <span>15</span>
+            <span className="text-[10px] text-neutral-400">⌵</span>
+          </button>
+          <button type="button" className="font-black text-sm px-1 hover:text-black">
+            B
+          </button>
+          <button type="button" className="flex items-baseline font-bold px-1 hover:text-black">
+            <span>T</span>
+            <span className="w-1.5 h-1.5 bg-black inline-block ml-0.5" />
+          </button>
+          <button type="button" className="border border-neutral-400 rounded px-1 text-[11px] font-bold hover:border-black">
+            T
+          </button>
+        </div>
+
+        {/* 3. 본문: 플랫 포스터 영역 + 텍스트 본문 (1280px 아래에서는 본문이 포스터 아래로 이동) */}
+        <div className="flex flex-col xl:flex-row gap-8 items-start pt-1 pb-16 md:pb-20">
+          <PosterUploader
+            posterImage={posterImage}
+            onImageChange={setPosterImage}
+            onCustomUpload={async (file) => {
+              const compressed = await compressImage(file);
+              setPosterImage(compressed);
+            }}
+            onOpenEditor={() => setShowEditorModal(true)}
+          />
+
+          <div className="flex-1 flex flex-col gap-3 min-w-0 w-full">
+            {/* 본문 텍스트 영역 (테두리/박스/그림자 없이 자연스러운 캔버스) */}
+            <textarea
+              placeholder="파티에 대해 자유롭게 소개해 주세요."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={14}
+              className="w-full bg-transparent border-none outline-none resize-none text-sm text-neutral-800 placeholder:text-neutral-500 leading-relaxed pt-1"
+            />
           </div>
         </div>
       </form>
@@ -207,6 +285,7 @@ export default function NewPartyPage() {
         onClose={() => setShowDraftModal(false)}
         drafts={drafts}
         onSelectDraft={handleLoadDraft}
+        onDeleteDraft={handleDeleteDraft}
       />
 
       {/* ⭐️ 4. 포스터 만들기 에디터 모달 연동 */}

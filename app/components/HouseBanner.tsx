@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import NeighborModal from "@/app/components/house/NeighborModal";
+
 
 interface UserItem {
   id: string;
@@ -76,24 +77,8 @@ export default function HouseBanner({ userId }: { userId: string }) {
     localStorage.setItem(`following_users_${myUserId}`, JSON.stringify(nextList));
   };
 
-  // 모달 상태 ('followings': 내가 맺은 이웃 | 'followers': 나를 추가한 이웃)
+  // 모달 상태 ('followings': 구독한 집 | 'followers': 손님)
   const [modalTab, setModalTab] = useState<"followings" | "followers" | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const currentList = modalTab === "followings" ? myFollowings : displayFollowers;
-  const filteredList = currentList.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.houseName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleRemoveFromList = (targetId: string) => {
-    if (modalTab === "followings") {
-      const next = myFollowings.filter((u) => u.id !== targetId);
-      setMyFollowings(next);
-      localStorage.setItem(`following_users_${myUserId}`, JSON.stringify(next));
-    }
-  };
 
   const houseTitle = isOwner ? "Dang’s house" : `${userId}’s zip`;
 
@@ -107,10 +92,7 @@ export default function HouseBanner({ userId }: { userId: string }) {
         <div className="flex items-center gap-2.5 text-[11px] font-bold text-neutral-700">
           <button
             type="button"
-            onClick={() => {
-              setSearchQuery("");
-              setModalTab("followings");
-            }}
+            onClick={() => setModalTab("followings")}
             className="hover:text-blue-700 transition flex items-center gap-1 cursor-pointer"
           >
             <span>구독한 집</span>
@@ -120,10 +102,7 @@ export default function HouseBanner({ userId }: { userId: string }) {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setSearchQuery("");
-              setModalTab("followers");
-            }}
+            onClick={() => setModalTab("followers")}
             className="hover:text-blue-700 transition flex items-center gap-1 cursor-pointer"
           >
             <span>손님</span>
@@ -173,117 +152,12 @@ export default function HouseBanner({ userId }: { userId: string }) {
       </div>
 
       {/* 이웃 목록 모달 */}
-      {mounted && modalTab &&
-        createPortal(
-          <div
-            onClick={() => setModalTab(null)}
-            className="fixed inset-0 z-[99999] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-3xl p-6 shadow-2xl flex flex-col gap-4 relative bg-[#FEF08A] border border-black/10 animate-in zoom-in-95 duration-150"
-            >
-              {/* 상단 탭 전환 바 */}
-              <div className="flex items-center justify-between border-b border-black/10 pb-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setModalTab("followings");
-                    }}
-                    className={`text-sm font-black transition pb-0.5 ${
-                      modalTab === "followings"
-                        ? "text-neutral-900 border-b-2 border-neutral-900"
-                        : "text-neutral-600 hover:text-neutral-900"
-                    }`}
-                  >
-                    구독한 집 ({myFollowings.length})
-                  </button>
-                  <span className="text-neutral-400 font-bold">·</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setModalTab("followers");
-                    }}
-                    className={`text-sm font-black transition pb-0.5 ${
-                      modalTab === "followers"
-                        ? "text-neutral-900 border-b-2 border-neutral-900"
-                        : "text-neutral-600 hover:text-neutral-900"
-                    }`}
-                  >
-                    손님 ({displayFollowers.length})
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setModalTab(null)}
-                  className="text-neutral-500 hover:text-black font-bold text-sm w-6 h-6 flex items-center justify-center"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* 검색창 */}
-              <input
-                type="text"
-                placeholder="검색"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white rounded-xl px-3.5 py-2 text-xs font-bold outline-none shadow-sm placeholder:text-neutral-400 border border-black/5"
-              />
-
-              {/* 리스트 */}
-              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
-                {filteredList.map((u) => (
-                  <div
-                    key={u.id}
-                    className="flex items-center justify-between bg-white/70 hover:bg-white p-2.5 rounded-2xl border border-black/5 transition"
-                  >
-                    <div
-                      onClick={() => {
-                        setModalTab(null);
-                        router.push(`/house/${u.id}/party`);
-                      }}
-                      className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
-                    >
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-sm shrink-0"
-                        style={{ backgroundColor: u.avatarBg }}
-                      >
-                        {u.name[0]}
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-black text-neutral-900 truncate">{u.name}</span>
-                        <span className="text-[10px] font-bold text-neutral-500 truncate">{u.houseName}</span>
-                      </div>
-                    </div>
-
-                    {isOwner && modalTab === "followings" && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFromList(u.id)}
-                        className="w-6 h-6 bg-blue-400 hover:bg-blue-500 text-white rounded-lg flex items-center justify-center text-xs font-bold transition shrink-0 ml-2 shadow-sm"
-                        title="삭제"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                {filteredList.length === 0 && (
-                  <div className="text-center py-6 text-xs font-bold text-neutral-500">
-                    목록이 비어 있습니다.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      <NeighborModal
+        isOpen={Boolean(modalTab)}
+        initialTab={modalTab || "followings"}
+        onClose={() => setModalTab(null)}
+        myUserId={myUserId}
+      />
     </div>
   );
 }

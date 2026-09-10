@@ -1,560 +1,805 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import InvitationCard, { CustomSection, ScheduleItem, SealInfo } from "@/app/components/postbox/InvitationCard";
-import InvitationModal from "@/app/components/postbox/InvitationModal";
+import InvitationCoverPreview from "@/app/components/craft/InvitationCoverPreview";
+import InvitationBodyPreview from "@/app/components/craft/InvitationBodyPreview";
+import { CustomSection, ScheduleItem, calculateDuration } from "@/app/components/postbox/InvitationCard";
+import {
+  CraftInvitationTemplate,
+  DEFAULT_CRAFT_TEMPLATES,
+  CategorySeal,
+  PRESET_SEALS,
+} from "@/types/craft";
 
-const PAPER_TEMPLATES = [
-  { id: "kraft", name: "크라프트", color: "#C8AD8D" },
-  { id: "white_clean", name: "화이트", color: "#F7FAFC" },
-  { id: "sky_blue", name: "스카이", color: "#EBF8FF" },
-  { id: "pink_cute", name: "핑크", color: "#FFF5F5" },
-];
-
-const BASIC_SEALS: SealInfo[] = [
-  { name: "토스트 씰", emoji: "🍞", color: "#DD6B20" },
-  { name: "하트 씰", emoji: "❤️", color: "#E53E3E" },
-  { name: "스타 씰", emoji: "⭐", color: "#D69E2E" },
-  { name: "클로버 씰", emoji: "🍀", color: "#38A169" },
-];
-
-export default function NewInvitationPage() {
+function NewInvitationContent() {
   const params = useParams();
   const userId = (params?.userId as string) || "dang";
   const router = useRouter();
   const searchParams = useSearchParams();
-  const editId = searchParams.get("edit");
+  const templateIdParam = searchParams.get("templateId");
 
-  const [step, setStep] = useState<1 | 2>(1);
+  // 1. 상단 탭 (Step 1: 기본 정보 / Step 2: 상세 내용)
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
-  const [selectedPaper, setSelectedPaper] = useState(PAPER_TEMPLATES[0]);
-  const [selectedSeal, setSelectedSeal] = useState<SealInfo>(BASIC_SEALS[0]);
+  // 2. 템플릿 목록 및 선택 상태
+  const [allTemplates, setAllTemplates] = useState<CraftInvitationTemplate[]>(DEFAULT_CRAFT_TEMPLATES);
+  const [selectedTemplate, setSelectedTemplate] = useState<CraftInvitationTemplate>(DEFAULT_CRAFT_TEMPLATES[0]);
+
+  // Step 1 폼 상태
   const [partyTitle, setPartyTitle] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [partyStartTime, setPartyStartTime] = useState("");
-  const [partyEndTime, setPartyEndTime] = useState("");
+  const [linkedPartyTitle, setLinkedPartyTitle] = useState("");
+  const [eventDate, setEventDate] = useState("2026-09-06");
+  const [partyStartTime, setPartyStartTime] = useState("10:40");
+  const [partyEndTime, setPartyEndTime] = useState("16:40");
   const [location, setLocation] = useState("");
-  const [customSections, setCustomSections] = useState<CustomSection[]>([]);
-  const [scheduleGlobalMode, setScheduleGlobalMode] = useState<"time" | "bullet">("time");
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
+  // Step 2 폼 상태
+  const [customSections, setCustomSections] = useState<CustomSection[]>([
+    { id: 1, title: "항목제목", content: "상세 내용을 적어보세요." },
+  ]);
+  const [scheduleGlobalMode, setScheduleGlobalMode] = useState<"time" | "bullet">("bullet");
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([
+    {
+      id: 1,
+      startTime: "10:40",
+      endTime: "12:40",
+      showDuration: true,
+      bulletType: "dash",
+      content: "상세 내용을 적어보세요.",
+      linkedContentTitle: "",
+    },
+    {
+      id: 2,
+      startTime: "12:40",
+      endTime: "16:40",
+      showDuration: true,
+      bulletType: "dash",
+      content: "상세 내용을 적어보세요.",
+      linkedContentTitle: "",
+    },
+  ]);
+  const [selectedSeal, setSelectedSeal] = useState<CategorySeal>(PRESET_SEALS[0]);
+
+  // 연동 가능한 파티/콘텐츠 목록
+  const [userParties, setUserParties] = useState<Array<{ id: number; title: string }>>([]);
+  const [userContents, setUserContents] = useState<Array<{ id: number; title: string }>>([]);
+
+  // 템플릿 및 데이터 로드
   useEffect(() => {
-    if (!editId) return;
     try {
-      const saved = localStorage.getItem(`sent_invitations_${userId}`);
-      if (saved) {
-        const list = JSON.parse(saved);
-        const target = list.find((item: any) => String(item.id) === String(editId));
-        if (target) {
-          setSelectedPaper(PAPER_TEMPLATES.find((p) => p.color === target.bgColor) || PAPER_TEMPLATES[0]);
-          setSelectedSeal(BASIC_SEALS.find((s) => s.emoji === target.seal?.emoji) || BASIC_SEALS[0]);
-          setPartyTitle(target.partyTitle || "");
-          setEventDate(target.eventDate || "");
-          setPartyStartTime(target.partyStartTime || "");
-          setPartyEndTime(target.partyEndTime || "");
-          setLocation(target.location || "");
-          setCustomSections(target.customSections || []);
-          setScheduleGlobalMode(target.scheduleGlobalMode || "time");
-          setSchedules(target.schedules || []);
-        }
+      // 로컬스토리지에서 공방 커스텀 템플릿 불러오기
+      const savedCustom = localStorage.getItem("craft_invitation_templates");
+      let list = [...DEFAULT_CRAFT_TEMPLATES];
+      if (savedCustom) {
+        const parsed: CraftInvitationTemplate[] = JSON.parse(savedCustom);
+        list = [...parsed, ...DEFAULT_CRAFT_TEMPLATES];
+      }
+      setAllTemplates(list);
+
+      // URL 파라미터로 지정된 템플릿이 있으면 선택
+      if (templateIdParam) {
+        const found = list.find((t) => String(t.id) === String(templateIdParam));
+        if (found) setSelectedTemplate(found);
+      } else {
+        setSelectedTemplate(list[0]);
+      }
+
+      // 유저의 파티 목록 로드
+      const savedParties = localStorage.getItem(`party_posts_${userId}`);
+      if (savedParties) {
+        setUserParties(JSON.parse(savedParties));
+      }
+
+      // 유저의 콘텐츠 목록 로드
+      const savedContents = localStorage.getItem(`contents_${userId}`);
+      if (savedContents) {
+        setUserContents(JSON.parse(savedContents));
       }
     } catch (e) {
       console.error(e);
     }
-  }, [editId, userId]);
+  }, [templateIdParam, userId]);
 
-  const [userContents] = useState<Array<{ id: number; title: string }>>(() => {
-    if (typeof window === "undefined") return [{ id: 1, title: "홈파티 요리 레시피" }];
-    try {
-      const saved = localStorage.getItem(`contents_${userId}`);
-      return saved ? JSON.parse(saved) : [{ id: 1, title: "홈파티 요리 레시피" }];
-    } catch {
-      return [{ id: 1, title: "홈파티 요리 레시피" }];
-    }
-  });
-
-  const [userParties] = useState<Array<{ id: number; title: string }>>(() => {
-    if (typeof window === "undefined") return [{ id: 1, title: "랜덤 비빔밥의 날" }];
-    try {
-      const saved = localStorage.getItem(`party_posts_${userId}`);
-      return saved ? JSON.parse(saved) : [{ id: 1, title: "랜덤 비빔밥의 날" }];
-    } catch {
-      return [{ id: 1, title: "랜덤 비빔밥의 날" }];
-    }
-  });
-
-  const handleAddSection = () => {
-    if (customSections.length >= 5) return alert("소개 항목은 최대 5개까지만 가능합니다.");
-    setCustomSections((prev) => [...prev, { id: Date.now(), title: "", content: "" }]);
+  // ---------------- 시간 유효성 검증 로직 ----------------
+  const getMinutes = (timeStr: string) => {
+    if (!timeStr) return null;
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
   };
 
-  const handleAddSchedule = () => {
-    if (schedules.length >= 10) return alert("식순은 최대 10개까지만 가능합니다.");
-    setSchedules((prev) => [
+  const startMinutes = getMinutes(partyStartTime);
+  const endMinutes = getMinutes(partyEndTime);
+
+  // 종료 시간은 반드시 시작 시간보다 최소 30분 이상 늦어야 함
+  const isTimeValid =
+    startMinutes !== null && endMinutes !== null && endMinutes - startMinutes >= 30;
+
+  // 시작 시간 변경 시 종료 시간을 "시작 시간 + 1시간"으로 자동 세팅
+  const handleStartTimeChange = (val: string) => {
+    setPartyStartTime(val);
+    if (val) {
+      const [hStr, mStr] = val.split(":");
+      const h = parseInt(hStr, 10);
+      const m = parseInt(mStr || "0", 10);
+      const nextH = (h + 1) % 24;
+      const autoEnd = `${String(nextH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      setPartyEndTime(autoEnd);
+    }
+  };
+
+  // ---------------- 소개 항목 핸들러 ----------------
+  const handleAddSection = () => {
+    if (customSections.length >= 6) return alert("소개 항목은 최대 6개까지 추가 가능합니다.");
+    setCustomSections((prev) => [
       ...prev,
-      { id: Date.now(), startTime: "", endTime: "", showDuration: true, bulletType: "dash", content: "" },
+      { id: Date.now(), title: "항목제목", content: "상세 내용을 적어보세요." },
     ]);
   };
 
-  const handleScheduleEndTimeChange = (id: number, val: string) => {
-    const target = schedules.find((s) => s.id === id);
-    if (val && (!target?.startTime || !target.startTime.trim())) {
-      alert("시작 시간을 먼저 입력해 주세요.");
-      return;
-    }
-    setSchedules((prev) => prev.map((s) => (s.id === id ? { ...s, endTime: val } : s)));
+  const handleRemoveSection = (id: number) => {
+    setCustomSections((prev) => prev.filter((s) => s.id !== id));
   };
 
-  const handleSaveAndOpenPreview = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!partyTitle.trim()) return alert("연동할 파티를 선택해 주세요.");
-    if (!eventDate.trim()) return alert("날짜를 입력해 주세요.");
-    if (!partyStartTime.trim()) return alert("시작 시간을 입력해 주세요.");
-    if (!location.trim()) return alert("장소를 입력해 주세요.");
+  // ---------------- 식순 핸들러 ----------------
+  const handleAddSchedule = () => {
+    if (schedules.length >= 10) return alert("식순은 최대 10개까지 추가 가능합니다.");
+    setSchedules((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        startTime: partyStartTime || "10:00",
+        endTime: partyEndTime || "11:00",
+        showDuration: true,
+        bulletType: "dash",
+        content: "상세 내용을 적어보세요.",
+        linkedContentTitle: "",
+      },
+    ]);
+  };
 
-    for (let i = 0; i < schedules.length; i++) {
-      if (!schedules[i].content.trim()) return alert(`식순 ${i + 1}번째 항목의 행사 내용을 입력해 주세요.`);
-      if (scheduleGlobalMode === "time" && !schedules[i].startTime.trim()) {
-        return alert(`식순 ${i + 1}번째 항목의 시작 시간을 입력해 주세요.`);
-      }
-    }
+  const handleRemoveSchedule = (id: number) => {
+    setSchedules((prev) => prev.filter((s) => s.id !== id));
+  };
 
+  // 날짜 한국어 포맷 (2026.09.06. 일요일)
+  const getFormattedEventDate = (d: string) => {
+    if (!d) return "날짜 미정";
     try {
-      const storageKey = `sent_invitations_${userId}`;
-      const prev = localStorage.getItem(storageKey);
-      let parsed = prev ? JSON.parse(prev) : [];
-      const currentId = editId ? Number(editId) : Date.now();
-      const payload = {
-        id: currentId,
+      const dateObj = new Date(d);
+      const days = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+      const yy = dateObj.getFullYear();
+      const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const dd = String(dateObj.getDate()).padStart(2, "0");
+      return `${yy}.${mm}.${dd}. ${days[dateObj.getDay()]}`;
+    } catch {
+      return d;
+    }
+  };
+
+  // [임시저장]
+  const handleSaveDraft = () => {
+    try {
+      const draft = {
+        selectedTemplateId: selectedTemplate.id,
         partyTitle,
+        linkedPartyTitle,
         eventDate,
         partyStartTime,
         partyEndTime,
         location,
-        bgColor: selectedPaper.color,
-        seal: selectedSeal,
         customSections,
         scheduleGlobalMode,
         schedules,
+        selectedSeal,
+        savedAt: Date.now(),
       };
-
-      if (editId) {
-        parsed = parsed.map((item: any) => (item.id === currentId ? payload : item));
-      } else {
-        parsed = [payload, ...parsed];
-      }
-
-      localStorage.setItem(storageKey, JSON.stringify(parsed));
-      setShowPreviewModal(true);
+      localStorage.setItem(`sent_invitations_draft_${userId}`, JSON.stringify(draft));
+      alert("초대장 작성이 임시저장되었습니다.");
     } catch {
-      alert("저장 중 오류가 발생했습니다.");
+      alert("임시저장 중 오류가 발생했습니다.");
     }
   };
 
-  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/house/${userId}/postbox` : "";
+  // [등록] 핸들러: 우체통에 저장 후 이동
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!partyTitle.trim()) {
+      alert("타이틀을 입력해 주세요.");
+      setCurrentStep(1);
+      return;
+    }
+
+    if (!isTimeValid) {
+      alert("종료 시간은 시작 시간보다 최소 30분 이상 늦어야 합니다.");
+      setCurrentStep(1);
+      return;
+    }
+
+    const newMailItem = {
+      id: Date.now(),
+      partyTitle: partyTitle.trim(),
+      linkedPartyTitle,
+      eventDate: getFormattedEventDate(eventDate),
+      partyStartTime,
+      partyEndTime,
+      location: location.trim() || "장소 미정",
+      bgColor: selectedTemplate.paperBgColor || "#f3e9e0",
+      seal: selectedSeal,
+      customSections,
+      schedules,
+      scheduleGlobalMode,
+      template: selectedTemplate,
+      createdAt: Date.now(),
+    };
+
+    try {
+      const existing = localStorage.getItem(`sent_invitations_${userId}`);
+      const list = existing ? JSON.parse(existing) : [];
+      localStorage.setItem(`sent_invitations_${userId}`, JSON.stringify([newMailItem, ...list]));
+
+      alert("새 초대장이 성공적으로 등록되었습니다! 📮");
+      router.push(`/house/${userId}/postbox`);
+    } catch {
+      alert("등록 중 오류가 발생했습니다.");
+    }
+  };
 
   return (
-    <div className="bg-white/95 rounded-3xl p-6 md:p-10 shadow-sm border border-neutral-200/60 max-w-6xl mx-auto w-full min-h-[680px] flex flex-col justify-between overflow-hidden">
-      <div className="flex flex-col lg:flex-row gap-8 items-start flex-1 w-full">
-        <div className="w-full lg:w-[420px] flex justify-center shrink-0">
-          <InvitationCard
-            partyTitle={partyTitle}
-            eventDate={eventDate}
-            partyStartTime={partyStartTime}
-            partyEndTime={partyEndTime}
-            location={location}
-            bgColor={selectedPaper.color}
-            seal={selectedSeal}
-            customSections={customSections}
-            schedules={schedules}
-            scheduleGlobalMode={scheduleGlobalMode}
-            minHeight="min-h-[560px]"
-            onLinkClick={(title) => alert(`🔗 '${title}' 콘텐츠로 이동합니다!`)}
-          />
+    <div className="w-full min-h-screen bg-[#FFFDF8] flex flex-col font-sans pb-24">
+      {/* 1. 상단 바: 제목 + [1. 기본 정보] [2. 상세 내용] 탭 + [저장], [임시저장 1/3], [등록] */}
+      <div className="w-full px-6 md:px-12 py-5 border-b border-neutral-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 bg-[#FFFDF8]/90 backdrop-blur-md z-30">
+        <div className="flex items-center gap-5">
+          <h2 className="text-xl font-black text-neutral-900 tracking-tight whitespace-nowrap">
+            새 초대장 만들기
+          </h2>
+
+          {/* 상단 탭 전환: 1. 기본 정보 / 2. 상세 내용 */}
+          <div className="flex items-center gap-1.5 bg-neutral-200/70 p-1 rounded-full text-xs font-bold select-none">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(1)}
+              className={`px-4 py-1.5 rounded-full transition cursor-pointer ${
+                currentStep === 1
+                  ? "bg-neutral-900 text-white shadow-xs"
+                  : "text-neutral-600 hover:text-black"
+              }`}
+            >
+              1. 기본 정보
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentStep(2)}
+              className={`px-4 py-1.5 rounded-full transition cursor-pointer ${
+                currentStep === 2
+                  ? "bg-neutral-900 text-white shadow-xs"
+                  : "text-neutral-600 hover:text-black"
+              }`}
+            >
+              2. 상세 내용
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 w-full min-w-0 flex flex-col justify-between gap-6">
-          {step === 1 && (
-            <div className="flex flex-col gap-8">
-              <div>
-                <h2 className="text-2xl font-black text-neutral-900">디자인 선택</h2>
-                <p className="text-xs text-neutral-500 mt-1">편지지 템플릿과 씰을 선택하세요.</p>
-              </div>
+        {/* 우측 액션 버튼들 */}
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              className="h-9 px-4 rounded-xl border border-neutral-300 hover:border-neutral-500 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-bold transition shadow-2xs cursor-pointer flex items-center justify-center whitespace-nowrap"
+            >
+              저장
+            </button>
+            <span className="text-[10px] text-neutral-400 font-medium">임시저장 1/3</span>
+          </div>
 
-              {/* ⭐️ 프레임 템플릿 + 저장한 템플릿 가져오기 버튼 ⭐️ */}
-              <div className="flex flex-col gap-2.5">
-                <span className="text-xs font-black text-neutral-700">프레임 템플릿</span>
-                <div className="flex items-center gap-3">
-                  {PAPER_TEMPLATES.map((tmpl) => (
-                    <button
-                      key={tmpl.id}
-                      type="button"
-                      onClick={() => setSelectedPaper(tmpl)}
-                      className={`w-14 h-14 rounded-xl border-2 transition-all flex items-center justify-center ${
-                        selectedPaper.id === tmpl.id ? "border-blue-600 shadow-md scale-105" : "border-neutral-200"
-                      }`}
-                      style={{ backgroundColor: tmpl.color }}
-                    >
-                      <span className="text-[10px] font-bold text-black/60 truncate px-1">{tmpl.name}</span>
-                    </button>
-                  ))}
-                  
-                  {/* 저장한 템플릿 가져오기 (+) 버튼 */}
-                  <div className="relative group">
-                    <button
-                      type="button"
-                      onClick={() => alert("저장한 템플릿 목록을 불러옵니다. (준비 중)")}
-                      className="w-14 h-14 bg-neutral-200/80 hover:bg-neutral-300 rounded-xl flex items-center justify-center text-neutral-600 font-bold text-xl transition"
-                    >
-                      +
-                    </button>
-                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-bold px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-md z-10">
-                      저장한 템플릿 가져오기
-                    </span>
-                  </div>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="h-9 text-xs font-bold px-5 rounded-xl transition shadow-xs whitespace-nowrap flex items-center justify-center bg-neutral-900 hover:bg-black text-white cursor-pointer"
+            title="초대장 등록하기"
+          >
+            등록
+          </button>
+        </div>
+      </div>
+
+      {/* 2. 본문 레이아웃: 좌측(실시간 프리뷰) + 우측(폼 영역) */}
+      <div className="w-full px-6 md:px-12 py-8 flex flex-col xl:flex-row gap-12 items-start max-w-7xl mx-auto">
+        {/* [좌측] 실시간 조립 프리뷰 (고정 캔버스) */}
+        <div className="w-full xl:w-[420px] shrink-0 flex flex-col gap-4 sticky top-28">
+          <div className="flex items-center justify-between text-xs font-bold text-neutral-500 px-1">
+            <span>{currentStep === 1 ? "초대장 커버 실시간 프리뷰" : "초대장 본문 실시간 프리뷰"}</span>
+            <span className="text-[11px] font-normal text-neutral-400">입력값이 즉시 반영됩니다</span>
+          </div>
+
+          <div className="w-full rounded-2xl p-4 bg-[#E8E2D5]/40 border border-black/10 shadow-lg">
+            {currentStep === 1 ? (
+              /* Step 1: 초대장 커버 (주전자 등) 실시간 프리뷰 */
+              <InvitationCoverPreview
+                template={selectedTemplate}
+                title={partyTitle}
+                date={getFormattedEventDate(eventDate)}
+                startTime={partyStartTime}
+                endTime={partyEndTime}
+                location={location}
+                showGuides={true}
+              />
+            ) : (
+              /* Step 2: 초대장 본문 (소개항목, 식순, 씰 오버레이) 실시간 프리뷰 */
+              <InvitationBodyPreview
+                template={selectedTemplate}
+                customSections={customSections}
+                schedules={schedules}
+                scheduleGlobalMode={scheduleGlobalMode}
+                selectedSeal={selectedSeal}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* [우측] 스텝별 입력 폼 패널 */}
+        <div className="flex-1 w-full flex flex-col gap-8">
+          {/* ======================= Step 1 (기본 정보) ======================= */}
+          {currentStep === 1 && (
+            <div className="flex flex-col gap-7 animate-in fade-in duration-200">
+              {/* 1) 초대장 템플릿 선택 그리드 */}
+              <div className="flex flex-col gap-3">
+                <label className="text-sm font-black text-neutral-900">초대장 템플릿 선택</label>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {allTemplates.map((tpl) => {
+                    const isSelected = selectedTemplate.id === tpl.id;
+                    return (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => setSelectedTemplate(tpl)}
+                        className={`aspect-[148/100] rounded-xl flex items-center justify-center p-2 relative transition cursor-pointer ${
+                          isSelected
+                            ? "ring-2 ring-black bg-black/5 scale-102"
+                            : "hover:bg-black/5 opacity-80 hover:opacity-100"
+                        }`}
+                        title={tpl.title}
+                      >
+                        {tpl.coverImage ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={tpl.coverImage}
+                            alt={tpl.title}
+                            className="w-full h-full object-contain pointer-events-none"
+                          />
+                        ) : tpl.coverType === "heart" ? (
+                          <svg viewBox="0 0 300 200" className="w-full h-full" fill="#FCE5E8">
+                            <path d="M150,185 C20,130 10,60 70,30 C120,5 150,55 150,55 C150,55 180,5 230,30 C290,60 280,130 150,185 Z" fill="#FCE5E8" stroke="#F6ADB8" strokeWidth="2" />
+                          </svg>
+                        ) : tpl.coverType === "book" ? (
+                          <div className="w-[85%] h-[80%] bg-[#486b51] rounded-md p-1.5 flex items-center justify-center">
+                            <div className="w-full h-full bg-[#FAF7EE] rounded-2xs border border-[#37523e]" />
+                          </div>
+                        ) : tpl.coverType === "house" ? (
+                          <div className="w-[85%] h-[80%] bg-[#faebd7] rounded-lg border border-[#D97D54] relative" />
+                        ) : (
+                          <div className="w-full h-full bg-[#DEDACF] rounded-lg" />
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {/* 더 많은 템플릿 보기 버튼 (+) */}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/village/craft/invitation")}
+                    className="aspect-[148/100] rounded-xl border border-dashed border-neutral-300 hover:border-black bg-neutral-100/70 hover:bg-neutral-200/60 flex flex-col items-center justify-center gap-1 transition cursor-pointer p-2 text-neutral-600 hover:text-black"
+                  >
+                    <span className="text-xl font-light leading-none">+</span>
+                    <span className="text-[10px] font-bold text-center leading-tight">더 많은<br />템플릿 보기</span>
+                  </button>
                 </div>
               </div>
 
-              {/* ⭐️ Basic 씰 + 저장한 씰 가져오기 버튼 ⭐️ */}
-              <div className="flex flex-col gap-2.5">
-                <span className="text-xs font-black text-neutral-700">Basic 씰</span>
-                <div className="flex items-center gap-3">
-                  {BASIC_SEALS.map((seal) => (
-                    <button
-                      key={seal.name}
-                      type="button"
-                      onClick={() => setSelectedSeal(seal)}
-                      className={`w-14 h-14 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-0.5 ${
-                        selectedSeal.name === seal.name ? "border-blue-600 shadow-md scale-105" : "border-neutral-200"
-                      }`}
-                      style={{ backgroundColor: seal.color }}
-                    >
-                      <span className="text-base">{seal.emoji}</span>
-                      <span className="text-[8px] font-bold text-white truncate px-1">{seal.name}</span>
-                    </button>
-                  ))}
-
-                  {/* 저장한 씰 가져오기 (+) 버튼 */}
-                  <div className="relative group">
-                    <button
-                      type="button"
-                      onClick={() => alert("저장한 씰 목록을 불러옵니다. (준비 중)")}
-                      className="w-14 h-14 bg-neutral-200/80 hover:bg-neutral-300 rounded-xl flex items-center justify-center text-neutral-600 font-bold text-xl transition"
-                    >
-                      +
-                    </button>
-                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-bold px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-md z-10">
-                      저장한 씰 가져오기
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-6 border-t border-neutral-100">
-                <button type="button" onClick={() => setStep(2)} className="bg-black text-white text-xs md:text-sm font-bold px-8 py-3 rounded-xl transition shadow-md">
-                  다음 ➔
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <form onSubmit={handleSaveAndOpenPreview} className="flex flex-col gap-5 overflow-y-auto max-h-[580px] pr-1">
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
-                <h2 className="text-2xl font-black text-neutral-900">내용 입력</h2>
-                <button type="button" onClick={() => setStep(1)} className="text-xs font-bold text-blue-600 hover:underline">
-                  ← 디자인 다시 선택
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-neutral-800">연동할 파티 *</label>
-                <select
+              {/* 2) 타이틀* */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-black text-neutral-900">타이틀*</label>
+                <input
+                  type="text"
+                  placeholder="타이틀을 입력하세요."
                   value={partyTitle}
                   onChange={(e) => setPartyTitle(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold outline-none"
-                  required
-                >
-                  <option value="">파티를 선택하세요</option>
-                  {userParties.map((p) => (
-                    <option key={p.id} value={p.title}>{p.title}</option>
-                  ))}
-                </select>
+                  className="w-full px-4 py-2.5 bg-white border border-neutral-300 rounded-xl text-xs font-medium text-neutral-800 placeholder:text-neutral-400 outline-none focus:border-black transition"
+                />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-neutral-600">날짜 *</label>
-                  <input
-                    type="date"
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-1.5 text-xs outline-none"
-                    required
-                  />
+              {/* 3) 연동할 파티를 선택하세요. */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-black text-neutral-900 flex items-center gap-1.5">
+                  <span>연동할 파티</span>
+                  <span className="text-xs font-normal text-neutral-400">(선택)</span>
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3.5 text-neutral-400 pointer-events-none text-sm">🔗</span>
+                  <select
+                    value={linkedPartyTitle}
+                    onChange={(e) => setLinkedPartyTitle(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-neutral-300 rounded-xl text-xs font-medium text-neutral-800 outline-none focus:border-black transition cursor-pointer"
+                  >
+                    <option value="">연동할 파티를 선택하세요.</option>
+                    {userParties.map((p) => (
+                      <option key={p.id} value={p.title}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-neutral-600">시간 (시작* ~ 종료 선택)</label>
-                  <div className="flex items-center gap-1">
+              </div>
+
+              {/* 4) 날짜* & 시간(시작*~종료) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 날짜 */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-black text-neutral-900">날짜*</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="date"
+                      value={eventDate}
+                      onChange={(e) => setEventDate(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white border border-neutral-300 rounded-xl text-xs font-medium text-neutral-800 outline-none focus:border-black transition"
+                    />
+                  </div>
+                </div>
+
+                {/* 시간(시작*~종료) */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-black text-neutral-900">시간(시작*~종료)</label>
+                  <div className="flex items-center gap-2">
                     <input
                       type="time"
                       value={partyStartTime}
-                      onChange={(e) => setPartyStartTime(e.target.value)}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-2 py-1.5 text-xs outline-none font-bold"
-                      required
+                      onChange={(e) => handleStartTimeChange(e.target.value)}
+                      className="flex-1 px-3 py-2.5 bg-white border border-neutral-300 rounded-xl text-xs font-medium text-neutral-800 outline-none focus:border-black transition"
                     />
                     <span className="text-neutral-400 font-bold">~</span>
                     <input
                       type="time"
                       value={partyEndTime}
                       onChange={(e) => setPartyEndTime(e.target.value)}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-2 py-1.5 text-xs outline-none font-bold"
+                      className="flex-1 px-3 py-2.5 bg-white border border-neutral-300 rounded-xl text-xs font-medium text-neutral-800 outline-none focus:border-black transition"
                     />
                   </div>
+
+                  {/* ⭐️ 시간 유효성 검증 경고 문구 */}
+                  {!isTimeValid && (
+                    <p className="text-[11px] font-bold text-red-600 mt-1 animate-in fade-in duration-150">
+                      ⚠️ 종료 시간은 반드시 시작 시간보다 최소 30분 이상 늦어야 합니다.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-neutral-600">장소 *</label>
+              {/* 5) 장소* */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-black text-neutral-900">장소*</label>
                 <input
                   type="text"
-                  placeholder="예: 서울시 동작구 상도로 우리집 거실"
+                  placeholder="장소를 입력해 주세요."
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 text-xs outline-none"
-                  required
+                  className="w-full px-4 py-2.5 bg-white border border-neutral-300 rounded-xl text-xs font-medium text-neutral-800 placeholder:text-neutral-400 outline-none focus:border-black transition"
                 />
               </div>
 
-              <div className="flex flex-col gap-2 pt-2 border-t border-neutral-100">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-neutral-800">초대장 소개 항목 ({customSections.length}/5)</span>
-                  <button type="button" onClick={handleAddSection} className="text-xs font-bold text-blue-600 hover:underline">
-                    + 항목 추가
-                  </button>
-                </div>
-                {customSections.map((sec, idx) => (
-                  <div key={sec.id} className="bg-neutral-100/70 p-3 rounded-2xl flex flex-col gap-2 relative">
-                    <button
-                      type="button"
-                      onClick={() => setCustomSections((prev) => prev.filter((s) => s.id !== sec.id))}
-                      className="absolute top-2.5 right-2.5 text-xs text-neutral-400 hover:text-black"
-                    >
-                      ✕
-                    </button>
-                    <input
-                      type="text"
-                      placeholder={`항목 제목 ${idx + 1}`}
-                      value={sec.title}
-                      onChange={(e) => setCustomSections((prev) => prev.map((s) => s.id === sec.id ? { ...s, title: e.target.value } : s))}
-                      className="bg-white rounded-lg px-3 py-1.5 text-xs font-bold outline-none"
-                    />
-                    <textarea
-                      placeholder="상세 내용을 적어보세요"
-                      value={sec.content}
-                      onChange={(e) => setCustomSections((prev) => prev.map((s) => s.id === sec.id ? { ...s, content: e.target.value } : s))}
-                      rows={2}
-                      className="bg-white rounded-lg p-2 text-xs outline-none resize-none"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-2.5 pt-2 border-t border-neutral-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-neutral-800">식순 설정 ({schedules.length}/10)</span>
-                    <div className="flex items-center gap-3 bg-neutral-100 px-2.5 py-1 rounded-lg text-xs font-bold text-neutral-700">
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="global_schedule_mode"
-                          checked={scheduleGlobalMode === "time"}
-                          onChange={() => setScheduleGlobalMode("time")}
-                        />
-                        시간 표시
-                      </label>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="global_schedule_mode"
-                          checked={scheduleGlobalMode === "bullet"}
-                          onChange={() => setScheduleGlobalMode("bullet")}
-                        />
-                        볼릿 표시
-                      </label>
-                    </div>
-                  </div>
-                  <button type="button" onClick={handleAddSchedule} className="text-xs font-bold text-blue-600 hover:underline">
-                    + 일정 추가
-                  </button>
-                </div>
-
-                {schedules.map((sch) => (
-                  <div key={sch.id} className="bg-neutral-200/80 rounded-2xl p-3 flex flex-col gap-2 relative">
-                    <button
-                      type="button"
-                      onClick={() => setSchedules((prev) => prev.filter((s) => s.id !== sch.id))}
-                      className="absolute top-2 right-2 text-xs text-neutral-400 hover:text-black font-bold"
-                    >
-                      ✕
-                    </button>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center pr-6">
-                      {scheduleGlobalMode === "time" ? (
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <input
-                            type="time"
-                            value={sch.startTime}
-                            onChange={(e) => setSchedules((prev) => prev.map((s) => s.id === sch.id ? { ...s, startTime: e.target.value } : s))}
-                            className="bg-white rounded-lg px-2 py-1 font-bold outline-none"
-                            required
-                          />
-                          <input
-                            type="time"
-                            value={sch.endTime}
-                            onChange={(e) => handleScheduleEndTimeChange(sch.id, e.target.value)}
-                            className="bg-white rounded-lg px-2 py-1 font-bold outline-none"
-                          />
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-neutral-700 cursor-pointer whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={sch.showDuration}
-                              onChange={(e) => setSchedules((prev) => prev.map((s) => s.id === sch.id ? { ...s, showDuration: e.target.checked } : s))}
-                            />
-                            소요시간
-                          </label>
-                        </div>
-                      ) : (
-                        <select
-                          value={sch.bulletType}
-                          onChange={(e) => setSchedules((prev) => prev.map((s) => s.id === sch.id ? { ...s, bulletType: e.target.value as any } : s))}
-                          className="bg-white rounded-lg px-2 py-1.5 text-xs font-bold outline-none"
-                        >
-                          <option value="dash">대시 (-)</option>
-                          <option value="dot">점 (•)</option>
-                          <option value="circle">원형 (○)</option>
-                        </select>
-                      )}
-
-                      <input
-                        type="text"
-                        placeholder="행사 내용 *"
-                        value={sch.content}
-                        onChange={(e) => setSchedules((prev) => prev.map((s) => s.id === sch.id ? { ...s, content: e.target.value } : s))}
-                        className="w-full bg-white rounded-lg px-3 py-1.5 text-xs font-bold outline-none"
-                        required
-                      />
-                    </div>
-
-                    <div className="flex justify-end">
-                      <select
-                        value={sch.linkedContentTitle || ""}
-                        onChange={(e) => setSchedules((prev) => prev.map((s) => s.id === sch.id ? { ...s, linkedContentTitle: e.target.value } : s))}
-                        className="w-full sm:w-1/2 bg-white rounded-lg px-3 py-1.5 text-[11px] font-bold text-blue-600 outline-none"
-                      >
-                        <option value="">🔗 콘텐츠 연결 (선택)</option>
-                        {userContents.map((c) => (
-                          <option key={c.id} value={c.title}>{c.title}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-neutral-100 mt-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => alert("초대장 임시저장 완료 (0/3)")}
-                    className="border border-neutral-300 hover:bg-neutral-100 text-neutral-700 text-xs font-bold px-4 py-2.5 rounded-xl transition"
-                  >
-                    저장 (0/3)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => alert("불러올 저장 내역이 없습니다.")}
-                    className="text-blue-600 hover:underline text-xs font-bold px-1"
-                  >
-                    불러오기
-                  </button>
-                </div>
-
+              {/* 다음 스텝(상세 내용) 이동 버튼 */}
+              <div className="pt-4 flex justify-end">
                 <button
-                  type="submit"
-                  className="bg-black hover:bg-neutral-800 text-white text-xs font-bold px-8 py-2.5 rounded-xl transition shadow-md"
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="bg-neutral-900 hover:bg-black text-white text-xs font-bold px-6 py-2.5 rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1.5"
                 >
-                  완료
+                  <span>다음: 상세 내용 작성</span>
+                  <span>→</span>
                 </button>
               </div>
-            </form>
+            </div>
+          )}
+
+          {/* ======================= Step 2 (상세 내용) ======================= */}
+          {currentStep === 2 && (
+            <div className="flex flex-col gap-8 animate-in fade-in duration-200">
+              {/* 1) 소개 항목 추가/삭제 */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-black text-neutral-900">소개 항목</label>
+                  <button
+                    type="button"
+                    onClick={handleAddSection}
+                    className="bg-black hover:bg-neutral-800 text-white text-xs font-bold px-3 py-1.5 rounded-full transition shadow-xs flex items-center gap-1"
+                  >
+                    <span>+ 항목추가</span>
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {customSections.map((sec) => (
+                    <div
+                      key={sec.id}
+                      className="flex flex-col gap-2 bg-neutral-50 p-3.5 rounded-2xl border border-neutral-200 relative group"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <input
+                          type="text"
+                          value={sec.title}
+                          placeholder="항목제목"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustomSections((prev) =>
+                              prev.map((s) => (s.id === sec.id ? { ...s, title: val } : s))
+                            );
+                          }}
+                          className="flex-1 bg-white border border-neutral-300 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 outline-none focus:border-black transition"
+                        />
+                        {customSections.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSection(sec.id)}
+                            className="text-neutral-400 hover:text-red-600 p-1 text-xs font-bold transition"
+                            title="삭제"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      <textarea
+                        value={sec.content}
+                        placeholder="상세 내용을 적어보세요."
+                        rows={2}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomSections((prev) =>
+                            prev.map((s) => (s.id === sec.id ? { ...s, content: val } : s))
+                          );
+                        }}
+                        className="w-full bg-white border border-neutral-300 rounded-xl p-3 text-xs text-neutral-800 outline-none focus:border-black transition resize-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2) 식순: [시간설정] vs [불릿 사용] 라디오 모드 토글 */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm font-black text-neutral-900">식순</label>
+
+                    {/* 라디오 토글 */}
+                    <div className="flex items-center gap-3 text-xs font-bold text-neutral-700">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="scheduleMode"
+                          checked={scheduleGlobalMode === "time"}
+                          onChange={() => setScheduleGlobalMode("time")}
+                          className="accent-black"
+                        />
+                        <span>시간설정</span>
+                      </label>
+
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="scheduleMode"
+                          checked={scheduleGlobalMode === "bullet"}
+                          onChange={() => setScheduleGlobalMode("bullet")}
+                          className="accent-black"
+                        />
+                        <span>불릿 사용</span>
+                      </label>
+                    </div>
+
+                    {/* 불릿 사용 모드 시 커스텀 불릿 라벨 */}
+                    {scheduleGlobalMode === "bullet" && (
+                      <span className="text-[11px] font-bold text-amber-900 bg-amber-100/70 border border-amber-300 px-2.5 py-1 rounded-md">
+                        커스텀 불릿 적용
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddSchedule}
+                    className="bg-black hover:bg-neutral-800 text-white text-xs font-bold px-3 py-1.5 rounded-full transition shadow-xs flex items-center gap-1"
+                  >
+                    <span>+ 일정추가</span>
+                  </button>
+                </div>
+
+                {/* 식순 리스트 폼 */}
+                <div className="flex flex-col gap-3">
+                  {schedules.map((item) => {
+                    const dur = calculateDuration(item.startTime, item.endTime);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex flex-col gap-2.5 bg-neutral-50 p-3.5 rounded-2xl border border-neutral-200"
+                      >
+                        {/* ⭐️ 시간설정 모드인 경우 시작/종료 시간 입력 및 소요시간 표기 */}
+                        {scheduleGlobalMode === "time" && (
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="time"
+                                value={item.startTime}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSchedules((prev) =>
+                                    prev.map((s) => (s.id === item.id ? { ...s, startTime: val } : s))
+                                  );
+                                }}
+                                className="px-2.5 py-1.5 bg-white border border-neutral-300 rounded-lg text-xs font-medium text-neutral-800 outline-none focus:border-black"
+                              />
+                              <span className="text-neutral-400 font-bold">~</span>
+                              <input
+                                type="time"
+                                value={item.endTime}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSchedules((prev) =>
+                                    prev.map((s) => (s.id === item.id ? { ...s, endTime: val } : s))
+                                  );
+                                }}
+                                className="px-2.5 py-1.5 bg-white border border-neutral-300 rounded-lg text-xs font-medium text-neutral-800 outline-none focus:border-black"
+                              />
+                            </div>
+
+                            {/* 소요시간 자동 계산 라벨 (체크박스 완전 제거됨) */}
+                            <div className="flex items-center gap-2">
+                              {dur && (
+                                <span className="text-xs font-black text-neutral-700 bg-neutral-200/80 px-2.5 py-1 rounded-md">
+                                  {dur}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSchedule(item.id)}
+                                className="text-neutral-400 hover:text-red-600 p-1 text-xs font-bold transition"
+                                title="일정 삭제"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 행사 내용* 입력 */}
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="text"
+                            placeholder="행사 내용*"
+                            value={item.content}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSchedules((prev) =>
+                                prev.map((s) => (s.id === item.id ? { ...s, content: val } : s))
+                              );
+                            }}
+                            className="flex-1 px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-bold text-neutral-800 placeholder:text-neutral-400 outline-none focus:border-black"
+                          />
+
+                          {/* 불릿 모드일 때의 삭제 버튼 */}
+                          {scheduleGlobalMode === "bullet" && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSchedule(item.id)}
+                              className="text-neutral-400 hover:text-red-600 p-1 text-xs font-bold transition"
+                              title="일정 삭제"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+
+                        {/* 콘텐츠 연결(선택) 드롭다운 */}
+                        <div className="relative flex items-center">
+                          <span className="absolute left-3 text-neutral-400 pointer-events-none text-xs">🔗</span>
+                          <select
+                            value={item.linkedContentTitle || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSchedules((prev) =>
+                                prev.map((s) => (s.id === item.id ? { ...s, linkedContentTitle: val } : s))
+                              );
+                            }}
+                            className="w-full pl-8 pr-3 py-1.5 bg-white border border-neutral-300 rounded-lg text-xs font-medium text-neutral-700 outline-none focus:border-black cursor-pointer"
+                          >
+                            <option value="">콘텐츠 연결(선택)</option>
+                            {userContents.map((c) => (
+                              <option key={c.id} value={c.title}>
+                                {c.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3) 카테고리 씰 선택 */}
+              <div className="flex flex-col gap-3">
+                <label className="text-sm font-black text-neutral-900">카테고리 씰 선택</label>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {PRESET_SEALS.map((seal) => {
+                    const isSelected = selectedSeal.id === seal.id;
+                    return (
+                      <button
+                        key={seal.id}
+                        type="button"
+                        onClick={() => setSelectedSeal(seal)}
+                        className={`w-16 h-16 rounded-xl flex items-center justify-center text-2xl transition cursor-pointer p-1 relative shadow-xs ${
+                          isSelected
+                            ? "ring-2 ring-black scale-105"
+                            : "opacity-80 hover:opacity-100 hover:scale-102"
+                        }`}
+                        style={{
+                          backgroundColor: seal.color || "#2ea043",
+                        }}
+                        title={seal.name}
+                      >
+                        <span>{seal.emoji || "💌"}</span>
+                      </button>
+                    );
+                  })}
+
+                  {/* 더 많은 씰 보기 (+) */}
+                  <button
+                    type="button"
+                    onClick={() => alert("추가 씰 스토어가 곧 오픈됩니다!")}
+                    className="w-16 h-16 rounded-xl border border-dashed border-neutral-300 hover:border-black bg-neutral-100/70 hover:bg-neutral-200/60 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer p-1 text-neutral-600 hover:text-black"
+                  >
+                    <span className="text-lg font-light leading-none">+</span>
+                    <span className="text-[9px] font-bold text-center leading-tight">더 많은<br />씰 보기</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 이전 / 완료 버튼 그룹 */}
+              <div className="pt-6 border-t border-neutral-200/80 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="bg-neutral-200 hover:bg-neutral-300 text-neutral-800 text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                >
+                  <span>←</span>
+                  <span>이전: 기본 정보 수정</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="bg-neutral-900 hover:bg-black text-white text-xs font-bold px-7 py-2.5 rounded-xl transition cursor-pointer shadow-sm flex items-center gap-2"
+                >
+                  <span>초대장 등록 완료</span>
+                  <span>📮</span>
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
-
-      <InvitationModal
-        isOpen={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        title="💌 초대장이 완성되었습니다!"
-        description="만든 초대장에 자동 저장되었으며, 바로 링크/QR을 공유할 수 있습니다."
-      >
-        <InvitationCard
-          partyTitle={partyTitle}
-          eventDate={eventDate}
-          partyStartTime={partyStartTime}
-          partyEndTime={partyEndTime}
-          location={location}
-          bgColor={selectedPaper.color}
-          seal={selectedSeal}
-          customSections={customSections}
-          schedules={schedules}
-          scheduleGlobalMode={scheduleGlobalMode}
-          minHeight="min-h-[400px]"
-        />
-
-        <div className="flex items-center gap-4 bg-neutral-100/80 p-3 rounded-2xl border border-neutral-200">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(shareUrl)}`}
-            alt="QR Code"
-            className="w-16 h-16 rounded-xl bg-white p-1 shrink-0"
-          />
-          <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <span className="text-xs font-bold text-neutral-700">모바일 초대장 링크</span>
-            <span className="text-[11px] font-mono text-neutral-500 truncate">{shareUrl}</span>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(shareUrl);
-                alert("초대장 링크가 클립보드에 복사되었습니다! 📋");
-              }}
-              className="self-start text-xs font-bold text-blue-600 hover:underline"
-            >
-              📋 링크 복사하기
-            </button>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setShowPreviewModal(false)}
-            className="w-1/3 border border-neutral-300 hover:bg-neutral-100 text-neutral-700 font-bold py-3 rounded-xl transition text-xs"
-          >
-            ✏️ 계속 수정
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push(`/house/${userId}/postbox`)}
-            className="flex-1 bg-black hover:bg-neutral-800 text-white font-bold py-3 rounded-xl transition shadow-lg text-xs md:text-sm"
-          >
-            만든 초대장으로 이동 📬
-          </button>
-        </div>
-      </InvitationModal>
     </div>
+  );
+}
+
+export default function NewInvitationPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-xs text-neutral-400">초대장 에디터 불러오는 중...</div>}>
+      <NewInvitationContent />
+    </Suspense>
   );
 }

@@ -81,178 +81,163 @@ export default function NewGalleryPage() {
   const slotCount = frameType === "4cut" ? 4 : 3;
 
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 md:p-10 shadow-sm border border-neutral-200/60 max-w-5xl mx-auto w-full min-h-[640px] flex flex-col justify-between">
-      <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-10 items-start flex-1">
-        
-        {/* 좌측: 실시간 네컷/세컷 스트립 프레임 미리보기 & 개별 사진 업로드 */}
-        <div className="w-full md:w-[320px] flex justify-center shrink-0">
-          <div
-            className="w-[240px] p-4 rounded-2xl shadow-xl flex flex-col justify-between gap-3 transition-colors duration-300 border-2"
-            style={{ backgroundColor: selectedTemplate.color }}
-          >
-            <div className="flex flex-col gap-2.5">
-              {Array.from({ length: slotCount }).map((_, idx) => (
-                <label
-                  key={idx}
-                  className="w-full aspect-[4/3] bg-white/80 hover:bg-white rounded-xl flex flex-col items-center justify-center cursor-pointer overflow-hidden relative border border-dashed border-black/20 group transition"
-                >
-                  {photos[idx] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={photos[idx]} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-neutral-400 group-hover:text-black">
-                      <span className="text-2xl font-black">+</span>
-                      <span className="text-[10px] font-bold">사진 {idx + 1}</span>
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handlePhotoUpload(idx, file);
-                    }}
-                  />
-                </label>
-              ))}
-            </div>
-
-            {/* 하단 스트립 타이틀 */}
-            <div className="text-center pt-2 border-t border-black/10">
-              <p className="text-xs font-black text-neutral-800 tracking-wider truncate">
-                {title || "TITLE HERE"}
-              </p>
-              <span className="text-[9px] text-neutral-500 font-bold">{getFormattedToday()}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 우측: 제목, 프레임 종류, Basic 템플릿, 저장된 프레임 선택 */}
-        <div className="flex-1 w-full flex flex-col justify-between h-full gap-8">
-          <div className="flex flex-col gap-6">
-            {/* 1. 제목 입력 */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs text-neutral-400 font-bold">
-                <span>작성일자</span>
-                <span>{getFormattedToday()}</span>
-              </div>
-              <input
-                type="text"
-                placeholder="제목을 입력하세요"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="text-2xl md:text-3xl font-black text-neutral-900 placeholder:text-neutral-300 outline-none border-b border-neutral-200 pb-2"
-              />
-            </div>
-
-            {/* 2. 프레임 선택 (4컷 vs 3컷) */}
-            <div className="flex flex-col gap-2.5">
-              <span className="text-xs font-black text-neutral-700">프레임 선택</span>
-              <div className="flex items-center gap-4">
-                {/* 4컷 선택 버튼 */}
-                <button
-                  type="button"
-                  onClick={() => setFrameType("4cut")}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
-                    frameType === "4cut" ? "border-blue-500 bg-blue-50/50 shadow-sm" : "border-neutral-200 bg-white"
-                  }`}
-                >
-                  <div className="w-10 h-16 bg-neutral-200 rounded p-1 flex flex-col justify-between gap-0.5">
-                    <div className="bg-white flex-1 rounded-sm" />
-                    <div className="bg-white flex-1 rounded-sm" />
-                    <div className="bg-white flex-1 rounded-sm" />
-                    <div className="bg-white flex-1 rounded-sm" />
-                  </div>
-                  <span className="text-xs font-bold text-neutral-700">4 컷</span>
-                </button>
-
-                {/* 3컷 선택 버튼 */}
-                <button
-                  type="button"
-                  onClick={() => setFrameType("3cut")}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
-                    frameType === "3cut" ? "border-blue-500 bg-blue-50/50 shadow-sm" : "border-neutral-200 bg-white"
-                  }`}
-                >
-                  <div className="w-10 h-16 bg-neutral-200 rounded p-1 flex flex-col justify-between gap-1">
-                    <div className="bg-white flex-1 rounded-sm" />
-                    <div className="bg-white flex-1 rounded-sm" />
-                    <div className="bg-white flex-1 rounded-sm" />
-                  </div>
-                  <span className="text-xs font-bold text-neutral-700">3 컷</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 3. Basic 프레임 템플릿 선택 */}
-            <div className="flex flex-col gap-2.5">
-              <span className="text-xs font-black text-neutral-700">Basic 프레임 템플릿</span>
-              <div className="grid grid-cols-5 gap-2.5">
-                {BASIC_TEMPLATES.map((tmpl) => (
-                  <button
-                    key={tmpl.id}
-                    type="button"
-                    onClick={() => setSelectedTemplate(tmpl)}
-                    className={`aspect-square rounded-xl border-2 transition-transform hover:scale-105 flex flex-col items-center justify-center p-1 ${
-                      selectedTemplate.id === tmpl.id ? "border-blue-600 shadow-md scale-105" : "border-neutral-200"
-                    }`}
-                    style={{ backgroundColor: tmpl.color }}
-                  >
-                    <span className="text-[10px] font-black text-black/60 truncate w-full text-center">
-                      {tmpl.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 4. 저장 목록에서 가져오기 (커스텀 프레임 슬롯) */}
-            <div className="flex flex-col gap-2.5">
-              <span className="text-xs font-black text-neutral-700">저장 목록에서 가져오기</span>
-              <div className="grid grid-cols-5 gap-2.5">
-                {[1, 2, 3, 4, 5].map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => alert(`저장된 ${slot}번 프레임 불러오기 준비 중`)}
-                    className="aspect-square bg-neutral-200/80 hover:bg-neutral-200 rounded-xl flex items-center justify-center text-neutral-500 font-black text-lg transition"
-                  >
-                    +
-                  </button>
-                ))}
-              </div>
-            </div>
+    <div className="w-full px-6 md:px-12 py-6 flex flex-col gap-6 font-sans pb-16">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full">
+        {/* 상단 바: 작성일자 & 제목 / 우측 임시저장 & 저장 버튼 */}
+        <div className="flex items-end justify-between gap-4 border-b border-neutral-200/60 pb-4">
+          <div className="flex flex-col gap-1.5 flex-1">
+            <span className="text-xs text-neutral-500 font-normal">
+              작성일자 : {getFormattedToday()}
+            </span>
+            <input
+              type="text"
+              placeholder="제목"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full text-3xl font-light text-neutral-900 placeholder:text-neutral-400 outline-none bg-transparent"
+            />
           </div>
 
-          {/* 하단 버튼 바 */}
-          <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => alert("프레임 저장 완료 (0/3)")}
-                className="border border-neutral-300 hover:bg-neutral-100 text-neutral-700 text-xs font-bold px-4 py-2.5 rounded-xl transition"
-              >
-                저장 (0/3)
-              </button>
-              <button
-                type="button"
-                onClick={() => alert("불러올 저장 내역이 없습니다.")}
-                className="text-blue-600 hover:underline text-xs font-bold px-1"
-              >
-                불러오기
-              </button>
-            </div>
-
+          <div className="flex items-center gap-4 shrink-0 pb-1">
+            <span className="text-xs text-neutral-600 font-medium">
+              임시저장 (0/3)
+            </span>
             <button
               type="submit"
-              className="bg-black hover:bg-neutral-800 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition shadow-md"
+              className="bg-black hover:bg-neutral-800 text-white text-xs font-bold px-6 py-2 rounded-lg transition shadow-sm"
             >
-              등록하기
+              저장
             </button>
           </div>
         </div>
 
+        {/* 본문 2열: 좌측 스트립 미리보기 + 우측 옵션 패널 */}
+        <div className="flex flex-col md:flex-row gap-10 items-start pt-2">
+          {/* 좌측: 실시간 네컷/세컷 스트립 프레임 미리보기 & 개별 사진 업로드 */}
+          <div className="w-full md:w-[320px] flex justify-center shrink-0">
+            <div
+              className="w-[240px] p-4 rounded-2xl shadow-lg flex flex-col justify-between gap-3 transition-colors duration-300 border-2"
+              style={{ backgroundColor: selectedTemplate.color }}
+            >
+              <div className="flex flex-col gap-2.5">
+                {Array.from({ length: slotCount }).map((_, idx) => (
+                  <label
+                    key={idx}
+                    className="w-full aspect-[4/3] bg-white/80 hover:bg-white rounded-xl flex flex-col items-center justify-center cursor-pointer overflow-hidden relative border border-dashed border-black/20 group transition"
+                  >
+                    {photos[idx] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photos[idx]} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-neutral-400 group-hover:text-black">
+                        <span className="text-2xl font-black">+</span>
+                        <span className="text-[10px] font-bold">사진 {idx + 1}</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handlePhotoUpload(idx, file);
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              {/* 하단 스트립 타이틀 */}
+              <div className="text-center pt-2 border-t border-black/10">
+                <p className="text-xs font-black text-neutral-800 tracking-wider truncate">
+                  {title || "TITLE HERE"}
+                </p>
+                <span className="text-[9px] text-neutral-500 font-bold">{getFormattedToday()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 우측: 프레임 종류, Basic 템플릿, 저장된 프레임 선택 */}
+          <div className="flex-1 w-full flex flex-col gap-8">
+            <div className="flex flex-col gap-6">
+              {/* 1. 프레임 선택 (4컷 vs 3컷) */}
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-black text-neutral-700">프레임 선택</span>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFrameType("4cut")}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                      frameType === "4cut" ? "border-blue-500 bg-blue-50/50 shadow-sm" : "border-neutral-200 bg-white"
+                    }`}
+                  >
+                    <div className="w-10 h-16 bg-neutral-200 rounded p-1 flex flex-col justify-between gap-0.5">
+                      <div className="bg-white flex-1 rounded-sm" />
+                      <div className="bg-white flex-1 rounded-sm" />
+                      <div className="bg-white flex-1 rounded-sm" />
+                      <div className="bg-white flex-1 rounded-sm" />
+                    </div>
+                    <span className="text-xs font-bold text-neutral-700">4 컷</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFrameType("3cut")}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                      frameType === "3cut" ? "border-blue-500 bg-blue-50/50 shadow-sm" : "border-neutral-200 bg-white"
+                    }`}
+                  >
+                    <div className="w-10 h-16 bg-neutral-200 rounded p-1 flex flex-col justify-between gap-1">
+                      <div className="bg-white flex-1 rounded-sm" />
+                      <div className="bg-white flex-1 rounded-sm" />
+                      <div className="bg-white flex-1 rounded-sm" />
+                    </div>
+                    <span className="text-xs font-bold text-neutral-700">3 컷</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Basic 프레임 템플릿 선택 */}
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-black text-neutral-700">Basic 프레임 템플릿</span>
+                <div className="grid grid-cols-5 gap-2.5 max-w-md">
+                  {BASIC_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      onClick={() => setSelectedTemplate(tmpl)}
+                      className={`aspect-square rounded-xl border-2 transition-transform hover:scale-105 flex flex-col items-center justify-center p-1 ${
+                        selectedTemplate.id === tmpl.id ? "border-blue-600 shadow-md scale-105" : "border-neutral-200"
+                      }`}
+                      style={{ backgroundColor: tmpl.color }}
+                    >
+                      <span className="text-[10px] font-black text-black/60 truncate w-full text-center">
+                        {tmpl.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. 저장 목록에서 가져오기 (커스텀 프레임 슬롯) */}
+              <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-black text-neutral-700">저장 목록에서 가져오기</span>
+                <div className="grid grid-cols-5 gap-2.5 max-w-md">
+                  {[1, 2, 3, 4, 5].map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => alert(`저장된 ${slot}번 프레임 불러오기 준비 중`)}
+                      className="aspect-square bg-neutral-200/80 hover:bg-neutral-200 rounded-xl flex items-center justify-center text-neutral-500 font-black text-lg transition"
+                    >
+                      +
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </form>
     </div>
   );
