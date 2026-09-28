@@ -48,6 +48,53 @@ const FONTS = [
   { name: "Comic Sans", value: "Comic Sans MS" },
 ];
 
+// 새 아이템 ID 생성 (이벤트 핸들러에서만 호출)
+function createItemId(prefix: string): string {
+  return `${prefix}_${Date.now()}`;
+}
+
+// 기본 아이템 생성
+function createDefaultItems(defaultTitle: string, defaultDate: string): PosterItem[] {
+  return [
+    {
+      id: "default-sticker",
+      type: "emoji",
+      content: "🚪",
+      x: 190,
+      y: 150,
+      scale: 1,
+      rotation: 0,
+      fontSize: 70,
+    },
+    {
+      id: "default-title",
+      type: "text",
+      content: defaultTitle || "HOUSEWARMING",
+      x: 190,
+      y: 280,
+      scale: 1,
+      rotation: 0,
+      fontSize: 26,
+      fontWeight: "bold",
+      fontFamily: "sans-serif",
+      color: "#1E293B",
+    },
+    {
+      id: "default-date",
+      type: "text",
+      content: defaultDate || "26.10.15.수",
+      x: 190,
+      y: 450,
+      scale: 1,
+      rotation: 0,
+      fontSize: 16,
+      fontWeight: "normal",
+      fontFamily: "sans-serif",
+      color: "#64748B",
+    },
+  ];
+}
+
 export default function PosterEditorModal({
   isOpen,
   onClose,
@@ -75,6 +122,7 @@ export default function PosterEditorModal({
   const originalItemState = useRef<PosterItem | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- portal needs document + hydrate from localStorage after mount
     setMounted(true);
     try {
       const saved = localStorage.getItem("saved_poster_templates");
@@ -84,49 +132,24 @@ export default function PosterEditorModal({
     }
   }, []);
 
-  // 기본 아이템 세팅
-  useEffect(() => {
-    if (!isOpen) return;
-    setItems([
-      {
-        id: "default-sticker",
-        type: "emoji",
-        content: "🚪",
-        x: 190,
-        y: 150,
-        scale: 1,
-        rotation: 0,
-        fontSize: 70,
-      },
-      {
-        id: "default-title",
-        type: "text",
-        content: defaultTitle || "HOUSEWARMING",
-        x: 190,
-        y: 280,
-        scale: 1,
-        rotation: 0,
-        fontSize: 26,
-        fontWeight: "bold",
-        fontFamily: "sans-serif",
-        color: "#1E293B",
-      },
-      {
-        id: "default-date",
-        type: "text",
-        content: defaultDate || "26.10.15.수",
-        x: 190,
-        y: 450,
-        scale: 1,
-        rotation: 0,
-        fontSize: 16,
-        fontWeight: "normal",
-        fontFamily: "sans-serif",
-        color: "#64748B",
-      },
-    ]);
-    setSelectedId("default-title");
-  }, [isOpen, defaultTitle, defaultDate]);
+  // 기본 아이템 세팅 (모달이 열리거나 기본값이 바뀔 때 렌더 중에 리셋)
+  const [prevDefaults, setPrevDefaults] = useState<{
+    isOpen: boolean;
+    defaultTitle: string;
+    defaultDate: string;
+  } | null>(null);
+  if (
+    !prevDefaults ||
+    prevDefaults.isOpen !== isOpen ||
+    prevDefaults.defaultTitle !== defaultTitle ||
+    prevDefaults.defaultDate !== defaultDate
+  ) {
+    setPrevDefaults({ isOpen, defaultTitle, defaultDate });
+    if (isOpen) {
+      setItems(createDefaultItems(defaultTitle, defaultDate));
+      setSelectedId("default-title");
+    }
+  }
 
   // 캔버스 드로잉 엔진
   const renderCanvas = useCallback(() => {
@@ -274,7 +297,7 @@ export default function PosterEditorModal({
   // 스티커 추가
   const addEmojiSticker = (emoji: string) => {
     const newItem: PosterItem = {
-      id: `sticker_${Date.now()}`,
+      id: createItemId("sticker"),
       type: "emoji",
       content: emoji,
       x: 190,
@@ -290,7 +313,7 @@ export default function PosterEditorModal({
   // 새 텍스트 추가
   const addText = () => {
     const newItem: PosterItem = {
-      id: `text_${Date.now()}`,
+      id: createItemId("text"),
       type: "text",
       content: "새 문구 입력",
       x: 190,
@@ -314,7 +337,7 @@ export default function PosterEditorModal({
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
       const newItem: PosterItem = {
-        id: `img_${Date.now()}`,
+        id: createItemId("img"),
         type: "image",
         content: dataUrl,
         x: 190,

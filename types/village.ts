@@ -15,7 +15,7 @@ export interface VillageContentItem {
   description?: string;
   date?: string;
   type?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   createdAt: number;
   coverImage: string;
   comments?: VillageComment[];

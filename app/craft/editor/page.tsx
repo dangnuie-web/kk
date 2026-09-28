@@ -48,6 +48,7 @@ export default function CraftEditorPage() {
   useEffect(() => {
     try {
       const savedName = localStorage.getItem("user_nickname");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage는 마운트 후에만 읽을 수 있음 (하이드레이션 불일치 방지)
       if (savedName) setAuthorName(savedName);
       const savedId = localStorage.getItem("current_user_id");
       if (savedId) setAuthorId(savedId);

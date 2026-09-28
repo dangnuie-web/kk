@@ -49,6 +49,7 @@ function SettingsContent() {
   useEffect(() => {
     try {
       const savedUserId = localStorage.getItem("current_user_id") || "dang";
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage는 마운트 후에만 읽을 수 있음 (하이드레이션 불일치 방지)
       setCurrentUserId(savedUserId);
       const userObj = MOCK_USERS.find((u) => u.id === savedUserId);
 

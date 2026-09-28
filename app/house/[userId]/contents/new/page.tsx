@@ -36,6 +36,22 @@ interface QuizItem {
   answer?: string; // 주관식 정답
 }
 
+// 임시저장 항목 타입
+interface ContentDraft {
+  slotId: number;
+  savedAt: string;
+  title: string;
+  description?: string;
+  postBody?: string;
+  postImage?: string | null;
+  hasGridSection?: boolean;
+  hasListSection?: boolean;
+  hasQuizSection?: boolean;
+  gridCards?: GridCardItem[];
+  listItems?: ListItem[];
+  quizItems?: QuizItem[];
+}
+
 export default function NewContentsPage() {
   const params = useParams();
   const userId = (params?.userId as string) || "dang";
@@ -74,7 +90,7 @@ export default function NewContentsPage() {
   // 임시저장 상태
   const [activeDraftSlotId, setActiveDraftSlotId] = useState<number | null>(null);
   const [showDraftModal, setShowDraftModal] = useState(false);
-  const [drafts, setDrafts] = useState<any[]>(() => {
+  const [drafts, setDrafts] = useState<ContentDraft[]>(() => {
     if (typeof window === "undefined") return [];
     try {
       const saved = localStorage.getItem(`contents_drafts_${userId}`);
@@ -157,7 +173,7 @@ export default function NewContentsPage() {
     alert(`임시저장 완료 (${updated.length}/3)`);
   };
 
-  const handleLoadDraft = (draft: any) => {
+  const handleLoadDraft = (draft: ContentDraft) => {
     setTitle(draft.title === "제목 없음" ? "" : draft.title);
     setDescription(draft.description || "");
     setPostBody(draft.postBody || "");
@@ -846,7 +862,7 @@ export default function NewContentsPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {drafts.map((d: any) => (
+                {drafts.map((d) => (
                   <div
                     key={d.slotId}
                     onClick={() => handleLoadDraft(d)}

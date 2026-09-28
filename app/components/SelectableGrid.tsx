@@ -32,7 +32,6 @@ export default function SelectableGrid({
   canSelect = true,
   onItemClick,
   onDelete,
-  onEdit,
   containerClassName,
   cardClassName,
   cardStyle,

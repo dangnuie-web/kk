@@ -4,6 +4,62 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// 드롭다운 메뉴 컴포넌트
+function ProfileDropdown({
+  myUserId,
+  onClose,
+}: {
+  myUserId: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="absolute right-0 mt-2 w-48 bg-[#3D7BF6] text-white rounded-2xl p-2 shadow-xl border border-blue-400 animate-in fade-in zoom-in-95 duration-150 z-50">
+      <div className="px-3 py-2 border-b border-white/20">
+        <span className="font-black text-sm block">당니</span>
+        <span className="text-[10px] text-white/70">@{myUserId}</span>
+      </div>
+
+      <div className="py-1 flex flex-col gap-0.5 text-xs font-bold">
+        <Link
+          href={`/house/${myUserId}/party`}
+          onClick={onClose}
+          className="px-3 py-2 hover:bg-white/10 rounded-xl transition flex items-center gap-2"
+        >
+          🏠 내 하우스 바로가기
+        </Link>
+        <Link
+          href={`/house/${myUserId}/postbox`}
+          onClick={onClose}
+          className="px-3 py-2 hover:bg-white/10 rounded-xl transition flex items-center gap-2"
+        >
+          📬 내 우체통 보관함
+        </Link>
+        <button
+          onClick={() => {
+            alert("계정 설정 모달 (준비 중)");
+            onClose();
+          }}
+          className="px-3 py-2 hover:bg-white/10 rounded-xl transition text-left flex items-center gap-2"
+        >
+          ⚙️ 설정
+        </button>
+      </div>
+
+      <div className="pt-1 border-t border-white/20">
+        <button
+          onClick={() => {
+            alert("모의 로그아웃 되었습니다.");
+            onClose();
+          }}
+          className="w-full text-left px-3 py-1.5 hover:bg-white/10 rounded-xl text-[11px] font-bold text-white/80 transition"
+        >
+          로그아웃
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Header() {
   const pathname = usePathname();
   const myUserId = "dang"; // 로그인된 내 아이디
@@ -21,54 +77,6 @@ export default function Header() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // 드롭다운 메뉴 컴포넌트
-  const ProfileDropdown = () => (
-    <div className="absolute right-0 mt-2 w-48 bg-[#3D7BF6] text-white rounded-2xl p-2 shadow-xl border border-blue-400 animate-in fade-in zoom-in-95 duration-150 z-50">
-      <div className="px-3 py-2 border-b border-white/20">
-        <span className="font-black text-sm block">당니</span>
-        <span className="text-[10px] text-white/70">@{myUserId}</span>
-      </div>
-
-      <div className="py-1 flex flex-col gap-0.5 text-xs font-bold">
-        <Link
-          href={`/house/${myUserId}/party`}
-          onClick={() => setIsMenuOpen(false)}
-          className="px-3 py-2 hover:bg-white/10 rounded-xl transition flex items-center gap-2"
-        >
-          🏠 내 하우스 바로가기
-        </Link>
-        <Link
-          href={`/house/${myUserId}/postbox`}
-          onClick={() => setIsMenuOpen(false)}
-          className="px-3 py-2 hover:bg-white/10 rounded-xl transition flex items-center gap-2"
-        >
-          📬 내 우체통 보관함
-        </Link>
-        <button
-          onClick={() => {
-            alert("계정 설정 모달 (준비 중)");
-            setIsMenuOpen(false);
-          }}
-          className="px-3 py-2 hover:bg-white/10 rounded-xl transition text-left flex items-center gap-2"
-        >
-          ⚙️ 설정
-        </button>
-      </div>
-
-      <div className="pt-1 border-t border-white/20">
-        <button
-          onClick={() => {
-            alert("모의 로그아웃 되었습니다.");
-            setIsMenuOpen(false);
-          }}
-          className="w-full text-left px-3 py-1.5 hover:bg-white/10 rounded-xl text-[11px] font-bold text-white/80 transition"
-        >
-          로그아웃
-        </button>
-      </div>
-    </div>
-  );
 
   return (
     <header className="sticky top-0 z-50 bg-[#F4EFEA] border-b border-neutral-200/80 px-4 md:px-8 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -90,7 +98,12 @@ export default function Header() {
           >
             당
           </button>
-          {isMenuOpen && <ProfileDropdown />}
+          {isMenuOpen && (
+          <ProfileDropdown
+            myUserId={myUserId}
+            onClose={() => setIsMenuOpen(false)}
+          />
+        )}
         </div>
 
         {/* 💻 PC 화면용 대 카테고리 (로고 바로 옆) */}
@@ -151,7 +164,12 @@ export default function Header() {
         >
           당
         </button>
-        {isMenuOpen && <ProfileDropdown />}
+        {isMenuOpen && (
+          <ProfileDropdown
+            myUserId={myUserId}
+            onClose={() => setIsMenuOpen(false)}
+          />
+        )}
       </div>
     </header>
   );

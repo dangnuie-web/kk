@@ -29,6 +29,7 @@ export default function HouseGalleryPage() {
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem("current_user_id");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from localStorage after mount
       if (savedUser) setCurrentUserId(savedUser);
 
       const saved = localStorage.getItem(`gallery_${userId}`);

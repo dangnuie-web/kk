@@ -13,6 +13,7 @@ export default function VillageCraftInvitationPage() {
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem("current_user_id");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage는 마운트 후에만 읽을 수 있음 (하이드레이션 불일치 방지)
       if (savedUser) setCurrentUserId(savedUser);
 
       // 로컬스토리지에 저장된 커스텀 템플릿 불러오기 및 결합

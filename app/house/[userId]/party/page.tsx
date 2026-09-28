@@ -24,6 +24,7 @@ export default function HousePartyPage() {
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem("current_user_id");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from localStorage after mount
       if (savedUser) setCurrentUserId(savedUser);
 
       const savedBookmarks = localStorage.getItem("village_bookmarks");
@@ -34,8 +35,8 @@ export default function HousePartyPage() {
       const key = `party_posts_${userId}`;
       const saved = localStorage.getItem(key);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        const normalized = parsed.map((item: any) => ({
+        const parsed: VillagePartyItem[] = JSON.parse(saved);
+        const normalized = parsed.map((item) => ({
           ...item,
           userName: item.userName || "당당",
           content: item.content || "하우스에서 등록된 파티입니다.",
@@ -105,10 +106,10 @@ export default function HousePartyPage() {
     date: p.eventDate,
     customContent: (
       <div className="relative w-full h-full">
-        {(p as any).posterImage ? (
+        {p.posterImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={(p as any).posterImage}
+            src={p.posterImage}
             alt={p.title}
             className="w-full h-full object-cover rounded-sm"
           />
