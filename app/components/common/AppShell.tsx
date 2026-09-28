@@ -124,16 +124,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setCurrentMode(mode);
 
     // 경로별 기본 활성 카테고리 동기화
-    if (pathname.includes("/party")) setActiveCategory("PARTY");
-    else if (pathname.includes("/contents")) setActiveCategory("CONTENTS");
-    else if (pathname.includes("/gallery")) setActiveCategory("GALLERY");
-    else if (pathname.includes("/studio") || pathname.includes("/craft")) {
+    if (pathname.startsWith("/village")) {
+      if (pathname.includes("/craft") || pathname.includes("/studio")) {
+        setActiveCategory("STUDIO");
+        if (pathname.includes("/invitation")) {
+          setStudioSub("INVITATION");
+        }
+      } else {
+        const searchTab = new URLSearchParams(window.location.search).get("tab")?.toUpperCase();
+        if (searchTab === "CONTENTS") setActiveCategory("CONTENTS");
+        else if (searchTab === "STUDIO") setActiveCategory("STUDIO");
+        else setActiveCategory("PARTY");
+      }
+    } else if (pathname.startsWith("/craft")) {
       setActiveCategory("STUDIO");
       if (pathname.includes("/invitation") || pathname.includes("/craft/editor")) {
         setStudioSub("INVITATION");
       }
-    }
-    else if (pathname.startsWith("/settings")) {
+    } else if (pathname.includes("/party")) {
+      setActiveCategory("PARTY");
+    } else if (pathname.includes("/contents")) {
+      setActiveCategory("CONTENTS");
+    } else if (pathname.includes("/gallery")) {
+      setActiveCategory("GALLERY");
+    } else if (pathname.includes("/postbox")) {
+      setActiveCategory("POSTBOX");
+    } else if (pathname.includes("/studio")) {
+      setActiveCategory("STUDIO");
+    } else if (pathname.startsWith("/settings")) {
       const tab = new URLSearchParams(window.location.search).get("tab");
       if (tab === "theme") setActiveCategory("THEME");
       else if (tab === "bookmark") setActiveCategory("BOOKMARK");
@@ -216,8 +234,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       // URL에서 userId 추출 (없으면 기본값 dang)
       const segments = pathname.split("/").filter(Boolean);
       const targetUserId = segments[1] || "dang";
-      
-      router.push(`/house/${targetUserId}/${catId.toLowerCase()}`);
+
+      if (catId === "STUDIO") {
+        setCurrentMode("VILLAGE");
+        router.push("/village/craft/invitation");
+      } else {
+        router.push(`/house/${targetUserId}/${catId.toLowerCase()}`);
+      }
     } else if (currentMode === "SETTINGS") {
       router.push(`/settings?tab=${catId.toLowerCase()}`);
     }

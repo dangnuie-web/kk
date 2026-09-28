@@ -10,8 +10,67 @@ import ContentGrid from "@/app/components/village/ContentGrid";
 import { VillagePartyItem, VillageContentItem } from "@/app/types/village";
 import { MOCK_USERS } from "@/app/data/mockUsers";
 
-const DEFAULT_VILLAGE_PARTIES: VillagePartyItem[] = [];
-const DEFAULT_VILLAGE_CONTENTS: VillageContentItem[] = [];
+const DEFAULT_VILLAGE_PARTIES: VillagePartyItem[] = [
+  {
+    id: "mock-party-1",
+    userId: "kongkong",
+    userName: "콩콩",
+    title: "보드게임 올데이 파티",
+    eventDate: "26.10.11.금",
+    content: "카탄, 루미큐브, 스플렌더까지 밤새 달려봅시다!\n주전부리는 각자 먹을 만큼 챙겨와 주세요.",
+    posterImage: "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=600&auto=format&fit=crop&q=80",
+    createdAt: 1729000000000,
+    comments: [{ id: 1, author: "초록", text: "저 보드게임 고수인데 참가 가능한가요?" }],
+  },
+  {
+    id: "mock-party-2",
+    userId: "haru",
+    userName: "하루",
+    title: "반려식물 분갈이 & 홈카페",
+    eventDate: "26.10.08.화",
+    content: "가을맞이 분갈이 흙과 화분을 나눕니다. 따뜻한 드립커피 한잔해요.",
+    posterImage: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80",
+    createdAt: 1728500000000,
+    comments: [],
+  },
+  {
+    id: "mock-party-3",
+    userId: "mint",
+    userName: "민트",
+    title: "랜덤 비빔밥의 날",
+    eventDate: "26.10.04.금",
+    content: "각자 재료 하나씩 들고와서 커다란 양푼에 비벼먹어요!",
+    posterImage: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80",
+    createdAt: 1728000000000,
+    comments: [],
+  },
+];
+
+const DEFAULT_VILLAGE_CONTENTS: VillageContentItem[] = [
+  {
+    id: "mock-content-1",
+    userId: "haru",
+    userName: "하루",
+    title: "우리집 여름 메뉴판",
+    content: "여름 동안 즐겨 마신 음료와 간단한 브런치 레시피를 공유합니다.",
+    coverImage: "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=900&auto=format&fit=crop&q=80",
+    createdAt: 1728900000000,
+    comments: [
+      { id: 1, author: "콩콩", text: "레시피 너무 좋아요!" },
+      { id: 2, author: "당당", text: "메뉴판 손글씨 너무 귀여워요!" },
+    ],
+  },
+  {
+    id: "mock-content-2",
+    userId: "kongkong",
+    userName: "콩콩",
+    title: "나만의 홈카페 레시피 모음",
+    content: "원두 블렌딩 비율과 홈메이드 바닐라빈 시럽 만드는 방법 공유합니다.",
+    coverImage: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=900&auto=format&fit=crop&q=80",
+    createdAt: 1728600000000,
+    comments: [],
+  },
+];
 
 function VillageContent() {
   const router = useRouter();
@@ -25,12 +84,18 @@ function VillageContent() {
 
   const subParam = searchParams.get("sub")?.toUpperCase() || "INVITATION";
 
+  // tab=studio로 들어온 경우 즉시 공방 초대장 페이지로 이동
+  useEffect(() => {
+    if (tabParam === "STUDIO") {
+      router.replace("/village/craft/invitation");
+    }
+  }, [tabParam, router]);
 
   // 피드 및 상세 데이터 상태
-  const [partyList, setPartyList] = useState<VillagePartyItem[]>([]);
+  const [partyList, setPartyList] = useState<VillagePartyItem[]>(DEFAULT_VILLAGE_PARTIES);
   const [activeParty, setActiveParty] = useState<VillagePartyItem | null>(null);
 
-  const [contentList, setContentList] = useState<VillageContentItem[]>([]);
+  const [contentList, setContentList] = useState<VillageContentItem[]>(DEFAULT_VILLAGE_CONTENTS);
   const [activeContent, setActiveContent] = useState<VillageContentItem | null>(null);
 
   // 탭 변경 시 열려있던 상세 카드 닫기
@@ -72,12 +137,12 @@ function VillageContent() {
     }
   });
 
-  // 마을 파티 연동 (모든 유저들의 등록 파티 집계)
+  // 마을 파티 연동 (모든 유저들의 등록 파티 집계 + 기본 목 데이터 결합)
   useEffect(() => {
     const loadParties = () => {
       try {
         const userIds = ["dang", "kongkong", "mint", "haru", "mori"];
-        let allParties: VillagePartyItem[] = [];
+        const allParties: VillagePartyItem[] = [];
 
         userIds.forEach((uId) => {
           const saved = localStorage.getItem(`party_posts_${uId}`);
@@ -101,9 +166,16 @@ function VillageContent() {
         });
 
         allParties.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        setPartyList(allParties);
+        // 사용자 등록 파티 우선 + 기본 목 파티 결합
+        const customIds = new Set(allParties.map((p) => String(p.id)));
+        const combined = [
+          ...allParties,
+          ...DEFAULT_VILLAGE_PARTIES.filter((p) => !customIds.has(String(p.id))),
+        ];
+        combined.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setPartyList(combined);
       } catch {
-        setPartyList([]);
+        setPartyList(DEFAULT_VILLAGE_PARTIES);
       }
     };
 
@@ -112,12 +184,12 @@ function VillageContent() {
     return () => window.removeEventListener("storage", loadParties);
   }, []);
 
-  // 마을 콘텐츠 연동 (모든 유저들의 등록 콘텐츠 집계)
+  // 마을 콘텐츠 연동 (모든 유저들의 등록 콘텐츠 집계 + 기본 목 데이터 결합)
   useEffect(() => {
     const loadContents = () => {
       try {
         const userIds = ["dang", "kongkong", "mint", "haru", "mori"];
-        let allContents: VillageContentItem[] = [];
+        const allContents: VillageContentItem[] = [];
 
         userIds.forEach((uId) => {
           const saved = localStorage.getItem(`content_posts_${uId}`);
@@ -140,9 +212,15 @@ function VillageContent() {
         });
 
         allContents.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        setContentList(allContents);
+        const customContentIds = new Set(allContents.map((c) => String(c.id)));
+        const combinedContents = [
+          ...allContents,
+          ...DEFAULT_VILLAGE_CONTENTS.filter((c) => !customContentIds.has(String(c.id))),
+        ];
+        combinedContents.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setContentList(combinedContents);
       } catch {
-        setContentList([]);
+        setContentList(DEFAULT_VILLAGE_CONTENTS);
       }
     };
 

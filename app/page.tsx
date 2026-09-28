@@ -1,4 +1,6 @@
 "use client";
+// 이 컴포넌트를 브라우저에서 실행되는 Client Component로 만든다.
+// 클릭 이벤트, useState, useRouter 같은 기능을 쓰려면 필요.
 
 import React from "react";
 import { useRouter } from "next/navigation";
