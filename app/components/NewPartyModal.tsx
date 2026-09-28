@@ -23,7 +23,7 @@ interface NewPartyModalProps {
 export default function NewPartyModal({ isOpen, onClose, onAddParty }: NewPartyModalProps) {
   const [title, setTitle] = useState("");
   const [dateStr, setDateStr] = useState("26.10.15.수");
-  const [desc, setDesc] = useState("");
+  const [desc] = useState("");
   const [posterBg, setPosterBg] = useState(BG_PRESETS[1].color);
   const [sticker, setSticker] = useState("🎉");
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);

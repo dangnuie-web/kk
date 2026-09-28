@@ -66,6 +66,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const savedAuth = localStorage.getItem("is_logged_in");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate auth/profile from localStorage after mount
       setIsLoggedIn(savedAuth === "true");
 
       const savedId = localStorage.getItem("current_user_id");
@@ -78,8 +79,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     // 전역 권한 가드 이벤트
-    const handleAuthRequired = (e: any) => {
-      setNoticeMessage(e.detail?.noticeMessage || "로그인이 필요합니다.");
+    const handleAuthRequired = (e: Event) => {
+      const detail = (e as CustomEvent<{ noticeMessage?: string } | undefined>).detail;
+      setNoticeMessage(detail?.noticeMessage || "로그인이 필요합니다.");
       setIsLoginModalOpen(true);
     };
 
@@ -121,6 +123,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const mode = getModeFromPath(pathname);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync nav state with pathname + window.location.search (browser-only)
     setCurrentMode(mode);
 
     // 경로별 기본 활성 카테고리 동기화

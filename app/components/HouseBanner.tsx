@@ -30,8 +30,6 @@ export default function HouseBanner({ userId }: { userId: string }) {
   const myUserId = "dang";
   const isOwner = userId === myUserId;
 
-  const [mounted, setMounted] = useState(false);
-  
   // 내 이웃 목록 (내가 추가한 사람)
   const [myFollowings, setMyFollowings] = useState<UserItem[]>([]);
   // 현재 보고 있는 하우스 주인의 이웃/나를 추가한 이웃
@@ -39,10 +37,10 @@ export default function HouseBanner({ userId }: { userId: string }) {
 
   // 1. LocalStorage에서 내 이웃 목록 동기화
   useEffect(() => {
-    setMounted(true);
     try {
       const saved = localStorage.getItem(`following_users_${myUserId}`);
       if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from localStorage after mount
         setMyFollowings(JSON.parse(saved));
       } else {
         setMyFollowings(DEFAULT_FOLLOWINGS);

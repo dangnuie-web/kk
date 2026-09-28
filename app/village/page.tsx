@@ -98,11 +98,13 @@ function VillageContent() {
   const [contentList, setContentList] = useState<VillageContentItem[]>(DEFAULT_VILLAGE_CONTENTS);
   const [activeContent, setActiveContent] = useState<VillageContentItem | null>(null);
 
-  // 탭 변경 시 열려있던 상세 카드 닫기
-  useEffect(() => {
+  // 탭 변경 시 열려있던 상세 카드 닫기 (이전 탭 값을 저장해두고 렌더 중 비교)
+  const [prevCategory, setPrevCategory] = useState(selectedCategory);
+  if (prevCategory !== selectedCategory) {
+    setPrevCategory(selectedCategory);
     setActiveParty(null);
     setActiveContent(null);
-  }, [selectedCategory]);
+  }
 
   // 로그인 상태 동기화
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -150,7 +152,7 @@ function VillageContent() {
             const parsed = JSON.parse(saved);
             const uInfo = MOCK_USERS.find((mu) => mu.id === uId);
             allParties.push(
-              ...parsed.map((item: any) => ({
+              ...parsed.map((item: VillagePartyItem) => ({
                 id: item.id,
                 userId: uId,
                 userName: uInfo?.name || item.userName || "익명",
@@ -197,7 +199,7 @@ function VillageContent() {
             const parsed = JSON.parse(saved);
             const uInfo = MOCK_USERS.find((mu) => mu.id === uId);
             allContents.push(
-              ...parsed.map((item: any) => ({
+              ...parsed.map((item: VillageContentItem) => ({
                 id: item.id,
                 userId: uId,
                 userName: uInfo?.name || item.userName || "익명",

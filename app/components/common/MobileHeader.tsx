@@ -23,7 +23,6 @@ export default function MobileHeader({
   isLoggedIn = false,
 }: MobileHeaderProps) {
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-  const [isStudioSubExpanded, setIsStudioSubExpanded] = useState(true);
   const selectorRef = useRef<HTMLDivElement>(null);
 
   // 외부 클릭 시 셀렉터 닫기

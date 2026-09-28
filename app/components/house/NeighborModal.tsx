@@ -45,6 +45,7 @@ export default function NeighborModal({
   const [followers] = useState<UserItem[]>(DEFAULT_FOLLOWERS);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- portal needs document + hydrate from localStorage after mount
     setMounted(true);
     try {
       const saved = localStorage.getItem(`following_users_${myUserId}`);
@@ -59,10 +60,15 @@ export default function NeighborModal({
     }
   }, [myUserId]);
 
-  useEffect(() => {
+  // initialTab / isOpen 변경 시 탭 및 검색어 초기화 (이전 props와 비교하여 렌더 중에 리셋)
+  const [prevInitialTab, setPrevInitialTab] = useState(initialTab);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (initialTab !== prevInitialTab || isOpen !== prevIsOpen) {
+    setPrevInitialTab(initialTab);
+    setPrevIsOpen(isOpen);
     setActiveTab(initialTab);
     setSearchQuery("");
-  }, [initialTab, isOpen]);
+  }
 
   if (!mounted || !isOpen) return null;
 

@@ -11,8 +11,6 @@ interface LoginModalProps {
   initialMode?: "LOGIN" | "SIGNUP";
 }
 
-const USER_ID_REGEX = /^[a-z0-9]{4,12}$/;
-
 export default function LoginModal({
   isOpen,
   onClose,
@@ -38,8 +36,12 @@ export default function LoginModal({
   const [signupNickname, setSignupNickname] = useState("");
   const [signupNicknameTouched, setSignupNicknameTouched] = useState(false);
 
-  // 모달이 열릴 때마다 모드 및 폼 초기화
-  useEffect(() => {
+  // 모달이 열릴 때마다 모드 및 폼 초기화 (이전 props와 비교하여 렌더 중에 리셋)
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevInitialMode, setPrevInitialMode] = useState(initialMode);
+  if (isOpen !== prevIsOpen || initialMode !== prevInitialMode) {
+    setPrevIsOpen(isOpen);
+    setPrevInitialMode(initialMode);
     if (isOpen) {
       setMode(initialMode);
       setSignupUserId("");
@@ -53,7 +55,7 @@ export default function LoginModal({
       setLoginPassword("");
       setShowLoginPassword(false);
     }
-  }, [isOpen, initialMode]);
+  }
 
   // ESC 키 누르면 모달 닫기
   useEffect(() => {
@@ -102,8 +104,8 @@ export default function LoginModal({
     try {
       const saved = localStorage.getItem("registered_users");
       if (saved) {
-        const list = JSON.parse(saved);
-        if (list.some((u: any) => u.id?.toLowerCase() === lower)) return true;
+        const list: { id?: string }[] = JSON.parse(saved);
+        if (list.some((u) => u.id?.toLowerCase() === lower)) return true;
       }
     } catch {}
     return mockTaken;

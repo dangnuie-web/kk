@@ -23,14 +23,21 @@ interface InvitationMailItem {
   scheduleGlobalMode?: "time" | "bullet";
 }
 
+// 로컬스토리지에 저장된 보낸 초대장 형태
+interface SentInvitation extends Omit<InvitationMailItem, "title" | "date" | "sender"> {
+  partyTitle: string;
+  eventDate: string;
+  title?: string;
+  date?: string;
+  sender?: string;
+}
+
 const DEFAULT_RECEIVED: InvitationMailItem[] = [];
 
 export default function HousePostboxPage() {
   const router = useRouter();
   const params = useParams();
   const userId = (params?.userId as string) || "dang";
-  const [currentUserId, setCurrentUserId] = useState<string>("dang");
-  const isMe = userId === currentUserId;
 
   const [boxType, setBoxType] = useState<"received" | "created">("received");
   const [receivedMails, setReceivedMails] = useState<InvitationMailItem[]>(DEFAULT_RECEIVED);
@@ -40,16 +47,14 @@ export default function HousePostboxPage() {
   const [keyword, setKeyword] = useState("");
 
   useEffect(() => {
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from localStorage after mount
     setIsMounted(true);
     try {
-      const savedUser = localStorage.getItem("current_user_id");
-      if (savedUser) setCurrentUserId(savedUser);
       const saved = localStorage.getItem(`sent_invitations_${userId}`);
       if (saved) {
-        const parsed = JSON.parse(saved);
+        const parsed: SentInvitation[] = JSON.parse(saved);
         setCreatedMails(
-          parsed.map((item: any) => ({
-            id: item.id,
+          parsed.map((item) => ({
             title: item.partyTitle,
             date: item.eventDate,
             sender: "나 (주최자)",

@@ -21,6 +21,7 @@ export default function InvitationModal({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- portal needs document; only render after mount
     setMounted(true);
   }, []);
 

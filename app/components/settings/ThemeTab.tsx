@@ -526,6 +526,7 @@ export default function ThemeTab() {
     try {
       const savedTheme = localStorage.getItem("house_theme_dang");
       if (savedTheme) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate saved theme from localStorage after mount
         setTheme(JSON.parse(savedTheme));
       }
 
@@ -719,7 +720,7 @@ export default function ThemeTab() {
           <span className="text-sm font-medium text-neutral-800">글자 크기</span>
           <select
             value={theme.fontSize}
-            onChange={(e) => setTheme((prev) => ({ ...prev, fontSize: e.target.value as any }))}
+            onChange={(e) => setTheme((prev) => ({ ...prev, fontSize: e.target.value as ThemeSettings["fontSize"] }))}
             className="bg-transparent border border-neutral-300 rounded-xl px-3 py-1.5 text-xs font-bold text-neutral-800 outline-none focus:border-neutral-900 cursor-pointer shadow-2xs"
           >
             <option value="small">작게</option>

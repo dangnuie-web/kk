@@ -75,6 +75,7 @@ function NewInvitationContent() {
         const parsed: CraftInvitationTemplate[] = JSON.parse(savedCustom);
         list = [...parsed, ...DEFAULT_CRAFT_TEMPLATES];
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from localStorage after mount
       setAllTemplates(list);
 
       // URL 파라미터로 지정된 템플릿이 있으면 선택
